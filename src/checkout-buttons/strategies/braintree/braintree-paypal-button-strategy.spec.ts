@@ -10,11 +10,13 @@ import { createCheckoutStore, CheckoutActionCreator, CheckoutActionType, Checkou
 import { getCheckout, getCheckoutStoreState } from '../../../checkout/checkouts.mock';
 import { MissingDataError } from '../../../common/error/errors';
 import { ConfigActionCreator, ConfigRequestSender } from '../../../config';
+import { FormFieldsActionCreator, FormFieldsRequestSender } from '../../../form';
 import { getBraintreePaypal } from '../../../payment/payment-methods.mock';
 import { BraintreeDataCollector, BraintreePaypalCheckout, BraintreeScriptLoader, BraintreeSDKCreator } from '../../../payment/strategies/braintree';
 import { getDataCollectorMock, getPaypalCheckoutMock } from '../../../payment/strategies/braintree/braintree.mock';
 import { PaypalButtonOptions, PaypalScriptLoader, PaypalSDK } from '../../../payment/strategies/paypal';
 import { getPaypalMock } from '../../../payment/strategies/paypal/paypal.mock';
+import { getShippingAddress } from '../../../shipping/shipping-addresses.mock';
 import { CheckoutButtonInitializeOptions } from '../../checkout-button-options';
 import CheckoutButtonMethodType from '../checkout-button-method-type';
 
@@ -39,7 +41,8 @@ describe('BraintreePaypalButtonStrategy', () => {
         store = createCheckoutStore(getCheckoutStoreState());
         checkoutActionCreator = new CheckoutActionCreator(
             new CheckoutRequestSender(createRequestSender()),
-            new ConfigActionCreator(new ConfigRequestSender(createRequestSender()))
+            new ConfigActionCreator(new ConfigRequestSender(createRequestSender())),
+            new FormFieldsActionCreator(new FormFieldsRequestSender(createRequestSender()))
         );
         braintreeSDKCreator = new BraintreeSDKCreator(new BraintreeScriptLoader(getScriptLoader()));
         formPoster = createFormPoster();
@@ -238,6 +241,62 @@ describe('BraintreePaypalButtonStrategy', () => {
         expect(store.dispatch).toHaveBeenCalledWith(checkoutActionCreator.loadDefaultCheckout());
     });
 
+    it('sets up PayPal payment flow with provided address', async () => {
+        await strategy.initialize({
+            ...options,
+            braintreepaypal: {
+                ...options.braintreepaypal,
+                shippingAddress: {
+                    ...getShippingAddress(),
+                    address1: 'a1',
+                    address2: 'a2',
+                    city: 'c',
+                    countryCode: 'AU',
+                    phone: '0123456',
+                    postalCode: '2000',
+                    stateOrProvinceCode: 'NSW',
+                    firstName: 'foo',
+                    lastName: 'bar',
+                },
+            },
+        });
+
+        eventEmitter.emit('payment');
+
+        await new Promise(resolve => process.nextTick(resolve));
+
+        expect(paypalCheckout.createPayment).toHaveBeenCalledWith(expect.objectContaining({
+            shippingAddressOverride: {
+                city: 'c',
+                countryCode: 'AU',
+                line1: 'a1',
+                line2: 'a2',
+                phone: '0123456',
+                postalCode: '2000',
+                recipientName: 'foo bar',
+                state: 'NSW',
+            },
+        }));
+    });
+
+    it('sets up PayPal payment flow with no address when null is passed', async () => {
+        await strategy.initialize({
+            ...options,
+            braintreepaypal: {
+                ...options.braintreepaypal,
+                shippingAddress: null,
+            },
+        });
+
+        eventEmitter.emit('payment');
+
+        await new Promise(resolve => process.nextTick(resolve));
+
+        expect(paypalCheckout.createPayment).toHaveBeenCalledWith(expect.objectContaining({
+            shippingAddressOverride: undefined,
+        }));
+    });
+
     it('sets up PayPal payment flow with current checkout details when customer is ready to pay', async () => {
         await strategy.initialize(options);
 
@@ -290,7 +349,6 @@ describe('BraintreePaypalButtonStrategy', () => {
                 email: 'foo@bar.com',
                 first_name: 'Foo',
                 last_name: 'Bar',
-                phone_number: '123456789',
                 address_line_1: '56789 Testing Way',
                 address_line_2: 'Level 2',
                 city: 'Some Other City',
@@ -302,7 +360,6 @@ describe('BraintreePaypalButtonStrategy', () => {
                 email: 'foo@bar.com',
                 first_name: 'Hello',
                 last_name: 'World',
-                phone_number: '987654321',
                 address_line_1: '12345 Testing Way',
                 address_line_2: 'Level 1',
                 city: 'Some City',
@@ -338,7 +395,6 @@ describe('BraintreePaypalButtonStrategy', () => {
                 email: 'foo@bar.com',
                 first_name: 'Foo',
                 last_name: 'Bar',
-                phone_number: '123456789',
                 address_line_1: '56789 Testing Way',
                 address_line_2: 'Level 2',
                 city: 'Some Other City',
@@ -350,7 +406,6 @@ describe('BraintreePaypalButtonStrategy', () => {
                 email: 'foo@bar.com',
                 first_name: 'Hello',
                 last_name: 'World',
-                phone_number: '987654321',
                 address_line_1: '12345 Testing Way',
                 address_line_2: 'Level 1',
                 city: 'Some City',

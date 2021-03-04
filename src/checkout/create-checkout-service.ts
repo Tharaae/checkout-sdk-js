@@ -5,16 +5,19 @@ import { BillingAddressActionCreator, BillingAddressRequestSender } from '../bil
 import { ErrorActionCreator } from '../common/error';
 import { getDefaultLogger } from '../common/log';
 import { getEnvironment } from '../common/utility';
-import { ConfigActionCreator, ConfigRequestSender, ConfigState } from '../config';
+import { ConfigActionCreator, ConfigRequestSender, ConfigState, ConfigWindow } from '../config';
 import { CouponActionCreator, CouponRequestSender, GiftCertificateActionCreator, GiftCertificateRequestSender } from '../coupon';
-import { createCustomerStrategyRegistry, CustomerStrategyActionCreator } from '../customer';
+import { createCustomerStrategyRegistry, CustomerActionCreator, CustomerRequestSender, CustomerStrategyActionCreator } from '../customer';
+import { FormFieldsActionCreator, FormFieldsRequestSender } from '../form';
 import { CountryActionCreator, CountryRequestSender } from '../geography';
 import { OrderActionCreator, OrderRequestSender } from '../order';
-import { createSpamProtection, SpamProtectionActionCreator } from '../order/spam-protection';
 import { createPaymentClient, createPaymentStrategyRegistry, PaymentMethodActionCreator, PaymentMethodRequestSender, PaymentStrategyActionCreator } from '../payment';
 import { InstrumentActionCreator, InstrumentRequestSender } from '../payment/instrument';
 import { createShippingStrategyRegistry, ConsignmentActionCreator, ConsignmentRequestSender, ShippingCountryActionCreator, ShippingCountryRequestSender, ShippingStrategyActionCreator } from '../shipping';
+import { SignInEmailActionCreator, SignInEmailRequestSender } from '../signin-email';
+import { createSpamProtection, SpamProtectionActionCreator, SpamProtectionRequestSender } from '../spam-protection';
 import { StoreCreditActionCreator, StoreCreditRequestSender } from '../store-credit';
+import { SubscriptionsActionCreator, SubscriptionsRequestSender } from '../subscription';
 
 import CheckoutActionCreator from './checkout-action-creator';
 import CheckoutRequestSender from './checkout-request-sender';
@@ -51,6 +54,7 @@ export default function createCheckoutService(options?: CheckoutServiceOptions):
     const config: ConfigState = {
         meta: {
             externalSource: options && options.externalSource,
+            variantIdentificationToken: (window as ConfigWindow).checkoutVariantIdentificationToken,
         },
         errors: {},
         statuses: {},
@@ -63,18 +67,29 @@ export default function createCheckoutService(options?: CheckoutServiceOptions):
     const checkoutRequestSender = new CheckoutRequestSender(requestSender);
     const configActionCreator = new ConfigActionCreator(new ConfigRequestSender(requestSender));
     const spamProtection = createSpamProtection(createScriptLoader());
-    const spamProtectionActionCreator = new SpamProtectionActionCreator(spamProtection);
+    const spamProtectionRequestSender = new SpamProtectionRequestSender(requestSender);
+    const spamProtectionActionCreator = new SpamProtectionActionCreator(spamProtection, spamProtectionRequestSender);
     const orderActionCreator = new OrderActionCreator(
         orderRequestSender,
-        new CheckoutValidator(checkoutRequestSender),
-        spamProtectionActionCreator
+        new CheckoutValidator(checkoutRequestSender)
     );
+    const subscriptionsActionCreator = new SubscriptionsActionCreator(new SubscriptionsRequestSender(requestSender));
+    const formFieldsActionCreator = new FormFieldsActionCreator(new FormFieldsRequestSender(requestSender));
+    const checkoutActionCreator = new CheckoutActionCreator(checkoutRequestSender, configActionCreator, formFieldsActionCreator);
 
     return new CheckoutService(
         store,
-        new BillingAddressActionCreator(new BillingAddressRequestSender(requestSender)),
-        new CheckoutActionCreator(checkoutRequestSender, configActionCreator),
+        new BillingAddressActionCreator(
+            new BillingAddressRequestSender(requestSender),
+            subscriptionsActionCreator
+        ),
+        checkoutActionCreator,
         configActionCreator,
+        new CustomerActionCreator(
+            new CustomerRequestSender(requestSender),
+            checkoutActionCreator,
+            spamProtectionActionCreator
+        ),
         new ConsignmentActionCreator(new ConsignmentRequestSender(requestSender), checkoutRequestSender),
         new CountryActionCreator(new CountryRequestSender(requestSender, { locale })),
         new CouponActionCreator(new CouponRequestSender(requestSender)),
@@ -86,12 +101,16 @@ export default function createCheckoutService(options?: CheckoutServiceOptions):
         new PaymentMethodActionCreator(new PaymentMethodRequestSender(requestSender)),
         new PaymentStrategyActionCreator(
             createPaymentStrategyRegistry(store, paymentClient, requestSender, spamProtection, locale),
-            orderActionCreator
+            orderActionCreator,
+            spamProtectionActionCreator
         ),
         new ShippingCountryActionCreator(new ShippingCountryRequestSender(requestSender, { locale })),
         new ShippingStrategyActionCreator(createShippingStrategyRegistry(store, requestSender)),
+        new SignInEmailActionCreator(new SignInEmailRequestSender(requestSender)),
         spamProtectionActionCreator,
-        new StoreCreditActionCreator(new StoreCreditRequestSender(requestSender))
+        new StoreCreditActionCreator(new StoreCreditRequestSender(requestSender)),
+        subscriptionsActionCreator,
+        formFieldsActionCreator
     );
 }
 

@@ -1,14 +1,44 @@
-export default interface Instrument {
+type PaymentInstrument = CardInstrument | AccountInstrument;
+
+export default PaymentInstrument;
+
+interface BaseInstrument {
     bigpayToken: string;
     defaultInstrument: boolean;
     provider: string;
-    iin: string;
-    last4: string;
+    trustedShippingAddress: boolean;
+    method: string;
+    type: string;
+}
+
+export interface CardInstrument extends BaseInstrument {
+    brand: string;
     expiryMonth: string;
     expiryYear: string;
-    brand: string;
-    trustedShippingAddress: boolean;
+    iin: string;
+    last4: string;
+    type: 'card';
 }
+
+interface BaseAccountInstrument extends BaseInstrument {
+    externalId: string;
+    method: string;
+    type: 'account' | 'bank';
+}
+
+export interface PayPalInstrument extends BaseAccountInstrument {
+    method: 'paypal';
+}
+
+export interface BankInstrument extends BaseAccountInstrument {
+    accountNumber: string;
+    issuer: string;
+    iban: string;
+    method: string;
+    type: 'bank';
+}
+
+export type AccountInstrument = PayPalInstrument | BankInstrument;
 
 export interface VaultAccessToken {
     vaultAccessToken: string;

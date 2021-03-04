@@ -1,34 +1,33 @@
-[@bigcommerce/checkout-sdk](../README.md) > [FormFields](../interfaces/formfields.md)
+[@bigcommerce/checkout-sdk](../README.md) › [FormFields](formfields.md)
 
-# FormFields
+# Interface: FormFields
 
 ## Hierarchy
 
-**FormFields**
+* **FormFields**
 
 ## Index
 
 ### Properties
 
-* [billingAddressFields](formfields.md#billingaddressfields)
-* [shippingAddressFields](formfields.md#shippingaddressfields)
-
----
+* [billingAddress](formfields.md#billingaddress)
+* [customerAccount](formfields.md#customeraccount)
+* [shippingAddress](formfields.md#shippingaddress)
 
 ## Properties
 
-<a id="billingaddressfields"></a>
+###  billingAddress
 
-###  billingAddressFields
-
-**● billingAddressFields**: *[FormField](formfield.md)[]*
-
-___
-<a id="shippingaddressfields"></a>
-
-###  shippingAddressFields
-
-**● shippingAddressFields**: *[FormField](formfield.md)[]*
+• **billingAddress**: *[FormField](formfield.md)[]*
 
 ___
 
+###  customerAccount
+
+• **customerAccount**: *[FormField](formfield.md)[]*
+
+___
+
+###  shippingAddress
+
+• **shippingAddress**: *[FormField](formfield.md)[]*

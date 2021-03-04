@@ -1,8 +1,9 @@
 import { find, reject } from 'lodash';
 
 import { FormField } from '../form';
-import { getFormFields } from '../form/form.mocks';
+import { getAddressFormFields } from '../form/form.mock';
 import { getUnitedStates } from '../geography/countries.mock';
+import { getBraintree } from '../payment/payment-methods.mock';
 import { getAustralia } from '../shipping/shipping-countries.mock';
 import { getShippingOptions } from '../shipping/shipping-options.mock';
 
@@ -29,8 +30,16 @@ describe('CheckoutStoreSelector', () => {
         expect(selector.getCheckout()).toEqual(internalSelectors.checkout.getCheckout());
     });
 
+    it('returns flash messages', () => {
+        expect(selector.getFlashMessages()).toEqual(internalSelectors.config.getFlashMessages());
+    });
+
     it('returns order', () => {
         expect(selector.getOrder()).toEqual(internalSelectors.order.getOrder());
+    });
+
+    it('returns sign-in email', () => {
+        expect(selector.getSignInEmail()).toEqual(internalSelectors.signInEmail.getEmail());
     });
 
     it('returns config', () => {
@@ -69,8 +78,90 @@ describe('CheckoutStoreSelector', () => {
         expect(selector.getCustomer()).toEqual(internalSelectors.customer.getCustomer());
     });
 
-    it('returns billing address', () => {
-        expect(selector.getBillingAddress()).toEqual(internalSelectors.billingAddress.getBillingAddress());
+    describe('#getBillingAddress()', () => {
+        it('returns billing address', () => {
+            expect(selector.getBillingAddress()).toEqual(internalSelectors.billingAddress.getBillingAddress());
+        });
+
+        it('returns geo-ip dummy billing address when billing address is undefined', () => {
+            internalSelectors = createInternalCheckoutSelectors(state);
+
+            jest.spyOn(internalSelectors.billingAddress, 'getBillingAddress').mockReturnValue(undefined);
+
+            selector = createCheckoutStoreSelector(internalSelectors);
+
+            expect(selector.getBillingAddress()).toEqual({
+                id: '',
+                address1: '',
+                address2: '',
+                city: '',
+                company: '',
+                country: '',
+                customFields: [],
+                email: '',
+                firstName: '',
+                lastName: '',
+                phone: '',
+                postalCode: '',
+                stateOrProvince: '',
+                stateOrProvinceCode: '',
+                countryCode: 'AU',
+            });
+        });
+
+        it('returns geo-ip dummy billing address when only email is defined in billing address', () => {
+            internalSelectors = createInternalCheckoutSelectors(state);
+
+            jest.spyOn(internalSelectors.billingAddress, 'getBillingAddress')
+                .mockReturnValue({
+                    email: 'foo@bar.com',
+                    id: '2',
+                    address1: '',
+                    customFields: [],
+                });
+
+            selector = createCheckoutStoreSelector(internalSelectors);
+
+            expect(selector.getBillingAddress()).toEqual({
+                id: '2',
+                address1: '',
+                address2: '',
+                city: '',
+                company: '',
+                country: '',
+                customFields: [],
+                email: 'foo@bar.com',
+                firstName: '',
+                lastName: '',
+                phone: '',
+                postalCode: '',
+                stateOrProvince: '',
+                stateOrProvinceCode: '',
+                countryCode: 'AU',
+            });
+        });
+
+        it('returns undefined if getBillingAddress & geoIp are not present', () => {
+            internalSelectors = createInternalCheckoutSelectors(state);
+
+            jest.spyOn(internalSelectors.billingAddress, 'getBillingAddress').mockReturnValue(undefined);
+            jest.spyOn(internalSelectors.config, 'getContextConfig').mockReturnValue(undefined);
+
+            selector = createCheckoutStoreSelector(internalSelectors);
+
+            expect(selector.getBillingAddress()).toBeUndefined();
+        });
+
+        it('returns address if address is partially defined but geo IP is not defined', () => {
+            internalSelectors = createInternalCheckoutSelectors(state);
+
+            jest.spyOn(internalSelectors.billingAddress, 'getBillingAddress').mockReturnValue({ email: 'foo@bar.com' });
+            jest.spyOn(internalSelectors.config, 'getContextConfig').mockReturnValue(undefined);
+
+            selector = createCheckoutStoreSelector(internalSelectors);
+
+            expect(selector.getBillingAddress()).toEqual({ email: 'foo@bar.com' });
+        });
     });
 
     describe('#getShippingAddress()', () => {
@@ -118,6 +209,12 @@ describe('CheckoutStoreSelector', () => {
         expect(selector.getInstruments()).toEqual(internalSelectors.instruments.getInstruments());
     });
 
+    it('returns instruments for a particular payment method', () => {
+        const paymentMethodMock = getBraintree();
+
+        expect(selector.getInstruments(paymentMethodMock)).toEqual(internalSelectors.instruments.getInstrumentsByPaymentMethod(paymentMethodMock));
+    });
+
     it('returns flag indicating if payment is submitted', () => {
         expect(selector.isPaymentDataSubmitted('braintree')).toEqual(true);
     });
@@ -127,7 +224,7 @@ describe('CheckoutStoreSelector', () => {
         const predicate = ({ name }: FormField) => name === 'stateOrProvince' || name === 'stateOrProvinceCode' || name === 'countryCode';
         const field = find(results, { name: 'stateOrProvinceCode' });
 
-        expect(reject(results, predicate)).toEqual(reject(getFormFields(), predicate));
+        expect(reject(results, predicate)).toEqual(reject(getAddressFormFields(), predicate));
         expect(field && field.options && field.options.items)
             .toEqual(getAustralia().subdivisions.map(({ code, name }) => ({ label: name, value: code })));
     });
@@ -137,7 +234,7 @@ describe('CheckoutStoreSelector', () => {
         const predicate = ({ name }: FormField) => name === 'stateOrProvince' || name === 'stateOrProvinceCode' || name === 'countryCode';
         const field = find(results, { name: 'stateOrProvinceCode' });
 
-        expect(reject(results, predicate)).toEqual(reject(getFormFields(), predicate));
+        expect(reject(results, predicate)).toEqual(reject(getAddressFormFields(), predicate));
         expect(field && field.options && field.options.items)
             .toEqual(getUnitedStates().subdivisions.map(({ code, name }) => ({ label: name, value: code })));
     });

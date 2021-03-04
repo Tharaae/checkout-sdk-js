@@ -1,7 +1,7 @@
 import { isObject, union } from 'lodash';
-import * as MessageFormat from 'messageformat';
+import MessageFormat from 'messageformat';
 
-import Logger from '../common/log/logger';
+import { Logger } from '../common/log';
 import { bindDecorator as bind } from '../common/utility';
 
 import LanguageConfig, { Locales, Translations } from './language-config';
@@ -139,7 +139,7 @@ export default class LanguageService {
                 const resultKey = parentKey ? `${parentKey}.${key}` : key;
 
                 if (isObject(value)) {
-                    return this._flattenObject(value as Translations, result, resultKey);
+                    return this._flattenObject(value, result, resultKey);
                 }
 
                 result[resultKey] = value;

@@ -4,6 +4,8 @@ import { Coupon } from '../coupon';
 import { Currency } from '../currency';
 import { Tax } from '../tax';
 
+import { OrderMetaState } from './order-state';
+
 export default interface Order {
     baseAmount: number;
     billingAddress: BillingAddress;
@@ -14,6 +16,7 @@ export default interface Order {
     customerId: number;
     customerMessage: string;
     discountAmount: number;
+    handlingCostTotal: number;
     hasDigitalItems: boolean;
     isComplete: boolean;
     isDownloadable: boolean;
@@ -22,16 +25,19 @@ export default interface Order {
     orderAmount: number;
     orderAmountAsInteger: number;
     orderId: number;
+    payments?: OrderPayments;
+    giftWrappingCostTotal: number;
     shippingCostTotal: number;
     shippingCostBeforeDiscount: number;
-    handlingCostTotal: number;
+    status: string;
     taxes: Tax[];
     taxTotal: number;
-    payments?: OrderPayments;
-    status: string;
+    mandateUrl?: string;
 }
 
 export type OrderPayments = Array<GatewayOrderPayment | GiftCertificateOrderPayment>;
+
+export type OrderMeta = OrderMetaState;
 
 export interface OrderPayment {
     providerId: string;

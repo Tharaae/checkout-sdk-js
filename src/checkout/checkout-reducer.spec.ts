@@ -6,6 +6,7 @@ import { getCheckout } from '../checkout/checkouts.mock';
 import { RequestError } from '../common/error/errors';
 import { getErrorResponse } from '../common/http-request/responses.mock';
 import { ConsignmentActionType } from '../shipping';
+import { SpamProtectionActionType } from '../spam-protection';
 
 import checkoutReducer from './checkout-reducer';
 import CheckoutState from './checkout-state';
@@ -77,6 +78,15 @@ describe('checkoutReducer', () => {
         }));
     });
 
+    it('returns new state when Load Shipping options succeeded', () => {
+        const action = createAction(ConsignmentActionType.LoadShippingOptionsSucceeded, getCheckout());
+        const output = checkoutReducer(initialState, action);
+
+        expect(output).toEqual(expect.objectContaining({
+            data: omit(action.payload, ['billingAddress', 'cart', 'customer', 'consignments', 'coupons', 'giftCertificates']),
+        }));
+    });
+
     it('returns new state when consignment gets deleted', () => {
         const action = createAction(ConsignmentActionType.DeleteConsignmentSucceeded, getCheckout(), { id: '123' });
         const output = checkoutReducer(initialState, action);
@@ -113,5 +123,32 @@ describe('checkoutReducer', () => {
             errors: { updateError: action.payload },
             statuses: { isUpdating: false },
         });
+    });
+
+    it('returns new status when spam check is executing', () => {
+        const action = createAction(SpamProtectionActionType.ExecuteRequested);
+        const output = checkoutReducer(initialState, action);
+
+        expect(output).toEqual(expect.objectContaining({
+            statuses: { isExecutingSpamCheck: true },
+        }));
+    });
+
+    it('returns new status when spam check is executed successfully', () => {
+        const action = createAction(SpamProtectionActionType.ExecuteSucceeded);
+        const output = checkoutReducer(initialState, action);
+
+        expect(output).toEqual(expect.objectContaining({
+            statuses: { isExecutingSpamCheck: false },
+        }));
+    });
+
+    it('returns new status when spam check is failed to execute', () => {
+        const action = createAction(SpamProtectionActionType.ExecuteFailed);
+        const output = checkoutReducer(initialState, action);
+
+        expect(output).toEqual(expect.objectContaining({
+            statuses: { isExecutingSpamCheck: false },
+        }));
     });
 });

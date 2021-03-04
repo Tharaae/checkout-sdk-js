@@ -1,6 +1,7 @@
 import { createAction } from '@bigcommerce/data-store';
 import { createRequestSender } from '@bigcommerce/request-sender';
 import { createScriptLoader } from '@bigcommerce/script-loader';
+import { omit } from 'lodash';
 import { of } from 'rxjs';
 
 import { ConsignmentRequestSender } from '../..';
@@ -9,18 +10,12 @@ import { getCheckoutStoreState } from '../../../checkout/checkouts.mock';
 import { InvalidArgumentError, MissingDataError } from '../../../common/error/errors';
 import { PaymentMethodActionCreator, PaymentMethodActionType, PaymentMethodRequestSender } from '../../../payment';
 import { getAmazonPay } from '../../../payment/payment-methods.mock';
-import {
-    AmazonPayAddressBook,
-    AmazonPayAddressBookOptions,
-    AmazonPayOrderReference,
-    AmazonPayScriptLoader,
-    AmazonPayWindow,
-} from '../../../payment/strategies/amazon-pay';
+import { AmazonPayAddressBook, AmazonPayAddressBookOptions, AmazonPayOrderReference, AmazonPayScriptLoader, AmazonPayWindow } from '../../../payment/strategies/amazon-pay';
 import { RemoteCheckoutActionCreator, RemoteCheckoutActionType, RemoteCheckoutRequestSender } from '../../../remote-checkout';
 import ConsignmentActionCreator from '../../consignment-action-creator';
 import { ConsignmentActionType } from '../../consignment-actions';
 import { getFlatRateOption } from '../../internal-shipping-options.mock';
-import { getShippingAddress } from '../../shipping-addresses.mock';
+import { getShippingAddress, getShippingAddressWithCustomFields } from '../../shipping-addresses.mock';
 import { ShippingStrategyActionType } from '../../shipping-strategy-actions';
 
 import AmazonPayShippingStrategy from './amazon-pay-shipping-strategy';
@@ -169,7 +164,7 @@ describe('AmazonPayShippingStrategy', () => {
             });
 
         expect(consignmentActionCreator.updateAddress)
-            .toHaveBeenCalledWith(getShippingAddress());
+            .toHaveBeenCalledWith(omit(getShippingAddress(), 'shouldSaveAddress'));
 
         expect(store.dispatch).toHaveBeenCalledWith(initializeShippingAction);
         expect(store.dispatch).toHaveBeenCalledWith(updateAddressAction);
@@ -272,6 +267,28 @@ describe('AmazonPayShippingStrategy', () => {
         const output = await strategy.selectOption(method.id, options);
 
         expect(consignmentActionCreator.selectShippingOption).toHaveBeenCalledWith(method.id, options);
+        expect(store.dispatch).toHaveBeenCalledWith(action);
+        expect(output).toEqual(store.getState());
+    });
+
+    it('updates address with provided custom fields and existing address', async () => {
+        const strategy = new AmazonPayShippingStrategy(store, consignmentActionCreator, paymentMethodActionCreator, remoteCheckoutActionCreator, scriptLoader);
+        const options = {};
+        const amazonShippingAddress = getShippingAddress();
+        const address = getShippingAddressWithCustomFields();
+        const action = of(createAction(ConsignmentActionType.UpdateConsignmentRequested));
+
+        jest.spyOn(consignmentActionCreator, 'updateAddress')
+            .mockReturnValue(action);
+
+        jest.spyOn(store, 'dispatch');
+
+        const output = await strategy.updateAddress(address, options);
+
+        expect(consignmentActionCreator.updateAddress).toHaveBeenCalledWith({
+            ...amazonShippingAddress,
+            customFields: address.customFields,
+        }, options);
         expect(store.dispatch).toHaveBeenCalledWith(action);
         expect(output).toEqual(store.getState());
     });

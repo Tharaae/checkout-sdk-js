@@ -1,6 +1,7 @@
 import { RequestOptions } from '../common/http-request';
 
 import { AmazonPayCustomerInitializeOptions } from './strategies/amazon';
+import { AmazonPayV2CustomerInitializeOptions } from './strategies/amazon-pay-v2';
 import { BraintreeVisaCheckoutCustomerInitializeOptions } from './strategies/braintree';
 import { ChasePayCustomerInitializeOptions } from './strategies/chasepay';
 import { GooglePayCustomerInitializeOptions } from './strategies/googlepay';
@@ -36,6 +37,12 @@ export interface CustomerInitializeOptions extends CustomerRequestOptions {
 
     /**
      * The options that are required to initialize the customer step of checkout
+     * when using AmazonPayV2.
+     */
+    amazonpay?: AmazonPayV2CustomerInitializeOptions;
+
+    /**
+     * The options that are required to initialize the customer step of checkout
      * when using Visa Checkout provided by Braintree.
      */
     braintreevisacheckout?: BraintreeVisaCheckoutCustomerInitializeOptions;
@@ -56,7 +63,31 @@ export interface CustomerInitializeOptions extends CustomerRequestOptions {
      * The options that are required to initialize the GooglePay payment method.
      * They can be omitted unless you need to support GooglePay.
      */
+    googlepayadyenv2?: GooglePayCustomerInitializeOptions;
+
+    /**
+     * The options that are required to initialize the GooglePay payment method.
+     * They can be omitted unless you need to support GooglePay.
+     */
+    googlepayauthorizenet?: GooglePayCustomerInitializeOptions;
+
+    /**
+     * The options that are required to initialize the GooglePay payment method.
+     * They can be omitted unless you need to support GooglePay.
+     */
     googlepaybraintree?: GooglePayCustomerInitializeOptions;
+
+    /**
+     * The options that are required to initialize the GooglePay payment method.
+     * They can be omitted unless you need to support GooglePay.
+     */
+    googlepaycheckoutcom?: GooglePayCustomerInitializeOptions;
+
+    /**
+     * The options that are required to initialize the GooglePay payment method.
+     * They can be omitted unless you need to support GooglePay.
+     */
+    googlepaycybersourcev2?: GooglePayCustomerInitializeOptions;
 
     /**
      * The options that are required to initialize the GooglePay payment method.

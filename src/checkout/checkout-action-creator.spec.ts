@@ -1,4 +1,3 @@
-
 import { createAction, createErrorAction } from '@bigcommerce/data-store';
 import { createRequestSender } from '@bigcommerce/request-sender';
 import { concat, from, of, throwError } from 'rxjs';
@@ -6,9 +5,10 @@ import { catchError, toArray } from 'rxjs/operators';
 
 import { MissingDataError, StandardError } from '../common/error/errors';
 import { getErrorResponse, getResponse } from '../common/http-request/responses.mock';
-import { ConfigActionCreator, ConfigRequestSender } from '../config';
-import { ConfigActionType } from '../config/config-actions';
+import { ConfigActionCreator, ConfigActionType, ConfigRequestSender } from '../config';
 import { getConfig } from '../config/configs.mock';
+import { FormFieldsActionCreator, FormFieldsActionType, FormFieldsRequestSender } from '../form';
+import { getFormFields } from '../form/form.mock';
 
 import CheckoutActionCreator from './checkout-action-creator';
 import { CheckoutActionType } from './checkout-actions';
@@ -20,15 +20,21 @@ import createCheckoutStore from './create-checkout-store';
 describe('CheckoutActionCreator', () => {
     let actionCreator: CheckoutActionCreator;
     let checkoutRequestSender: CheckoutRequestSender;
+    let formFieldsRequestSender: FormFieldsRequestSender;
     let configRequestSender: ConfigRequestSender;
     let configActionCreator: ConfigActionCreator;
+    let formFieldsActionCreator: FormFieldsActionCreator;
     let store: CheckoutStore;
 
     beforeEach(() => {
         const requestSender = createRequestSender();
         checkoutRequestSender = new CheckoutRequestSender(requestSender);
         configRequestSender = new ConfigRequestSender(requestSender);
+        formFieldsRequestSender = new FormFieldsRequestSender(requestSender);
         store = createCheckoutStore(getCheckoutStoreState());
+
+        jest.spyOn(formFieldsRequestSender, 'loadFields')
+            .mockReturnValue(Promise.resolve(getResponse(getFormFields())));
 
         jest.spyOn(configRequestSender, 'loadConfig')
             .mockReturnValue(Promise.resolve(getResponse(getConfig())));
@@ -43,7 +49,11 @@ describe('CheckoutActionCreator', () => {
 
         jest.spyOn(configActionCreator, 'loadConfig');
 
-        actionCreator = new CheckoutActionCreator(checkoutRequestSender, configActionCreator);
+        formFieldsActionCreator = new FormFieldsActionCreator(formFieldsRequestSender);
+
+        jest.spyOn(formFieldsActionCreator, 'loadFormFields');
+
+        actionCreator = new CheckoutActionCreator(checkoutRequestSender, configActionCreator, formFieldsActionCreator);
     });
 
     describe('#loadCheckout', () => {
@@ -55,12 +65,14 @@ describe('CheckoutActionCreator', () => {
 
             expect(checkoutRequestSender.loadCheckout).toHaveBeenCalledWith(id, undefined);
 
-            expect(actions).toEqual([
+            expect(actions).toEqual(expect.arrayContaining([
                 { type: CheckoutActionType.LoadCheckoutRequested },
                 { type: ConfigActionType.LoadConfigRequested },
+                { type: FormFieldsActionType.LoadFormFieldsRequested },
+                { type: FormFieldsActionType.LoadFormFieldsSucceeded, payload: getFormFields() },
                 { type: ConfigActionType.LoadConfigSucceeded, payload: getConfig() },
                 { type: CheckoutActionType.LoadCheckoutSucceeded, payload: getCheckout() },
-            ]);
+            ]));
         });
 
         it('emits error action if unable to load checkout', async () => {
@@ -78,12 +90,13 @@ describe('CheckoutActionCreator', () => {
                 .toPromise();
 
             expect(errorHandler).toHaveBeenCalled();
-            expect(actions).toEqual([
+            expect(actions).toEqual(expect.arrayContaining([
                 { type: CheckoutActionType.LoadCheckoutRequested },
                 { type: ConfigActionType.LoadConfigRequested },
+                { type: FormFieldsActionType.LoadFormFieldsRequested },
                 { type: ConfigActionType.LoadConfigSucceeded, payload: getConfig() },
                 { type: CheckoutActionType.LoadCheckoutFailed, error: true, payload: getErrorResponse() },
-            ]);
+            ]));
         });
 
         it('emits error action if unable to load config', async () => {
@@ -104,12 +117,12 @@ describe('CheckoutActionCreator', () => {
                 .toPromise();
 
             expect(errorHandler).toHaveBeenCalled();
-            expect(actions).toEqual([
+            expect(actions).toEqual(expect.arrayContaining([
                 { type: CheckoutActionType.LoadCheckoutRequested },
                 { type: ConfigActionType.LoadConfigRequested },
                 { type: ConfigActionType.LoadConfigFailed, error: true, payload: errorResponse },
                 { type: CheckoutActionType.LoadCheckoutFailed, error: true, payload: errorResponse },
-            ]);
+            ]));
         });
 
         it('calls loadConfig in parallel', () => {
@@ -135,10 +148,13 @@ describe('CheckoutActionCreator', () => {
             expect(actions).toEqual([
                 { type: CheckoutActionType.LoadCheckoutRequested },
                 { type: ConfigActionType.LoadConfigRequested },
+                { type: FormFieldsActionType.LoadFormFieldsRequested },
                 { type: ConfigActionType.LoadConfigSucceeded, payload: getConfig() },
+                { type: FormFieldsActionType.LoadFormFieldsSucceeded, payload: getFormFields() },
                 { type: CheckoutActionType.LoadCheckoutSucceeded, payload: getCheckout() },
             ]);
 
+            expect(formFieldsActionCreator.loadFormFields).toHaveBeenCalled();
             expect(configActionCreator.loadConfig).toHaveBeenCalled();
             expect(checkoutRequestSender.loadCheckout).toHaveBeenCalled();
         });
@@ -160,7 +176,9 @@ describe('CheckoutActionCreator', () => {
             expect(actions).toEqual([
                 { type: CheckoutActionType.LoadCheckoutRequested },
                 { type: ConfigActionType.LoadConfigRequested },
+                { type: FormFieldsActionType.LoadFormFieldsRequested },
                 { type: ConfigActionType.LoadConfigSucceeded, payload: getConfig() },
+                { type: FormFieldsActionType.LoadFormFieldsSucceeded, payload: getFormFields() },
                 { type: CheckoutActionType.LoadCheckoutFailed, error: true, payload: getErrorResponse() },
             ]);
         });

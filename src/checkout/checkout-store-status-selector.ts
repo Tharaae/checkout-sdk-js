@@ -36,6 +36,13 @@ export default interface CheckoutStoreStatusSelector {
     isUpdatingCheckout(): boolean;
 
     /**
+     * Checks whether spam check is executing.
+     *
+     * @returns True if the current checkout is being updated, otherwise false.
+     */
+    isExecutingSpamCheck(): boolean;
+
+    /**
      * Checks whether the current order is submitting.
      *
      * @returns True if the current order is submitting, otherwise false.
@@ -248,6 +255,13 @@ export default interface CheckoutStoreStatusSelector {
     isRemovingCoupon(): boolean;
 
     /**
+     * Checks whether a sign-in email is being sent.
+     *
+     * @returns True if sending a sign-in email, otherwise false
+     */
+    isSendingSignInEmail(): boolean;
+
+    /**
      * Checks whether the current customer is applying a gift certificate.
      *
      * @returns True if applying a gift certificate, otherwise false.
@@ -294,6 +308,17 @@ export default interface CheckoutStoreStatusSelector {
     isCustomerStepPending(): boolean;
 
     /**
+     * Checks whether the shipping step of a checkout is in a pending state.
+     *
+     * The shipping step is considered to be pending if it is in the process of
+     * initializing, updating address, selecting a shipping option, and/or
+     * interacting with a shipping widget.
+     *
+     * @returns True if the shipping step is pending, otherwise false.
+     */
+    isShippingStepPending(): boolean;
+
+    /**
      * Checks whether the payment step of a checkout is in a pending state.
      *
      * The payment step is considered to be pending if it is in the process of
@@ -303,6 +328,27 @@ export default interface CheckoutStoreStatusSelector {
      * @returns True if the payment step is pending, otherwise false.
      */
     isPaymentStepPending(): boolean;
+
+    /**
+     * Checks whether the subscriptions are being updated.
+     *
+     * @returns True if updating subscriptions, otherwise false.
+     */
+    isUpdatingSubscriptions(): boolean;
+
+    /**
+     * Checks whether a customer account is being created
+     *
+     * @returns True if creating, otherwise false.
+     */
+    isCreatingCustomerAccount(): boolean;
+
+    /**
+     * Checks whether a customer address is being created
+     *
+     * @returns True if creating, otherwise false.
+     */
+    isCreatingCustomerAddress(): boolean;
 }
 
 export type CheckoutStoreStatusSelectorFactory = (state: InternalCheckoutSelectors) => CheckoutStoreStatusSelector;
@@ -342,6 +388,21 @@ export function createCheckoutStoreStatusSelectorFactory(): CheckoutStoreStatusS
         }
     );
 
+    const isShippingStepPending = createSelector(
+        ({ shippingStrategies }: InternalCheckoutSelectors) => shippingStrategies.isInitializing,
+        ({ shippingStrategies }: InternalCheckoutSelectors) => shippingStrategies.isUpdatingAddress,
+        ({ shippingStrategies }: InternalCheckoutSelectors) => shippingStrategies.isSelectingOption,
+        ({ shippingStrategies }: InternalCheckoutSelectors) => shippingStrategies.isWidgetInteracting,
+        (isInitializing, isUpdatingAddress, isSelectingOption, isWidgetInteracting) => (methodId?: string) => {
+            return (
+                isInitializing(methodId) ||
+                isUpdatingAddress(methodId) ||
+                isSelectingOption(methodId) ||
+                isWidgetInteracting(methodId)
+            );
+        }
+    );
+
     const isPaymentStepPending = createSelector(
         ({ paymentStrategies }: InternalCheckoutSelectors) => paymentStrategies.isInitializing,
         ({ paymentStrategies }: InternalCheckoutSelectors) => paymentStrategies.isExecuting,
@@ -357,13 +418,25 @@ export function createCheckoutStoreStatusSelectorFactory(): CheckoutStoreStatusS
         }
     );
 
+    const isSubmittingOrder = createSelector(
+        ({ paymentStrategies }: InternalCheckoutSelectors) => paymentStrategies.isExecuting,
+        ({ checkout }: InternalCheckoutSelectors) => checkout.isExecutingSpamCheck, // Remove this when CheckoutService#initializeSpamProtection is deprecated
+        (isExecuting, isExecutingSpamCheck) => (methodId?: string) => {
+            return (
+                isExecuting(methodId) ||
+                isExecutingSpamCheck()
+            );
+        }
+    );
+
     return memoizeOne((
         state: InternalCheckoutSelectors
     ): CheckoutStoreStatusSelector => {
         const selector = {
             isLoadingCheckout: state.checkout.isLoading,
             isUpdatingCheckout: state.checkout.isUpdating,
-            isSubmittingOrder: state.paymentStrategies.isExecuting,
+            isExecutingSpamCheck: state.checkout.isExecutingSpamCheck,
+            isSubmittingOrder: isSubmittingOrder(state),
             isFinalizingOrder: state.paymentStrategies.isFinalizing,
             isLoadingOrder: state.order.isLoading,
             isLoadingCart: state.cart.isLoading,
@@ -378,6 +451,9 @@ export function createCheckoutStoreStatusSelectorFactory(): CheckoutStoreStatusS
             isLoadingShippingOptions: state.consignments.isLoadingShippingOptions,
             isSelectingShippingOption: isSelectingShippingOption(state),
             isUpdatingBillingAddress: state.billingAddress.isUpdating,
+            isUpdatingSubscriptions: state.subscriptions.isUpdating,
+            isCreatingCustomerAccount: state.customer.isCreatingCustomerAccount,
+            isCreatingCustomerAddress: state.customer.isCreatingCustomerAddress,
             isContinuingAsGuest: state.billingAddress.isContinuingAsGuest,
             isUpdatingShippingAddress: state.shippingStrategies.isUpdatingAddress,
             isUpdatingConsignment: state.consignments.isUpdating,
@@ -392,7 +468,9 @@ export function createCheckoutStoreStatusSelectorFactory(): CheckoutStoreStatusS
             isLoadingInstruments: state.instruments.isLoading,
             isDeletingInstrument: state.instruments.isDeleting,
             isLoadingConfig: state.config.isLoading,
+            isSendingSignInEmail: state.signInEmail.isSending,
             isCustomerStepPending: isCustomerStepPending(state),
+            isShippingStepPending: isShippingStepPending(state),
             isPaymentStepPending: isPaymentStepPending(state),
         };
 

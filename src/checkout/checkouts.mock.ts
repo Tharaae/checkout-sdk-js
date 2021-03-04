@@ -6,11 +6,11 @@ import { getCoupon, getCouponsState, getShippingCoupon } from '../coupon/coupons
 import { getGiftCertificate, getGiftCertificatesState } from '../coupon/gift-certificates.mock';
 import { getCustomer, getCustomerState } from '../customer/customers.mock';
 import { getCustomerStrategyState } from '../customer/internal-customers.mock';
+import { getFormFieldsState } from '../form/form.mock';
 import { getCountriesState } from '../geography/countries.mock';
 import { getOrderState } from '../order/orders.mock';
-import { ACKNOWLEDGE } from '../payment';
+import { ACKNOWLEDGE, HOSTED } from '../payment';
 import { getInstrumentsState } from '../payment/instrument/instrument.mock';
-import { HOSTED } from '../payment/payment-method-types';
 import { getPaymentMethod, getPaymentMethodsState } from '../payment/payment-methods.mock';
 import { getPaymentState } from '../payment/payments.mock';
 import { getRemoteCheckoutState } from '../remote-checkout/remote-checkout.mock';
@@ -40,13 +40,15 @@ export function getCheckout(): Checkout {
         discounts: [],
         coupons: [],
         isStoreCreditApplied: false,
+        shouldExecuteSpamCheck: false,
         orderId: 295,
         shippingCostTotal: 15,
         shippingCostBeforeDiscount: 20,
         handlingCostTotal: 8,
-        taxTotal: 0,
+        taxTotal: 3,
         subtotal: 190,
         grandTotal: 190,
+        giftWrappingCostTotal: 0,
         outstandingBalance: 190,
         giftCertificates: [],
         balanceDue: 0,
@@ -125,6 +127,7 @@ export function getCheckoutStoreState(): CheckoutStoreState {
         coupons: getCouponsState(),
         customer: getCustomerState(),
         customerStrategies: getCustomerStrategyState(),
+        formFields: getFormFieldsState(),
         giftCertificates: getGiftCertificatesState(),
         instruments: getInstrumentsState(),
         order: { errors: {}, statuses: {} },
@@ -134,6 +137,8 @@ export function getCheckoutStoreState(): CheckoutStoreState {
         remoteCheckout: getRemoteCheckoutState(),
         shippingCountries: getShippingCountriesState(),
         shippingStrategies: { data: {}, errors: {}, statuses: {} },
+        subscriptions: { errors: {}, statuses: {} },
+        signInEmail: { errors: {}, statuses: {} },
         storeCredit: { errors: {}, statuses: {} },
     };
 }

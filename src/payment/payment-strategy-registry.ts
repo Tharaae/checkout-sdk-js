@@ -3,13 +3,12 @@ import { some } from 'lodash';
 
 import { InternalCheckoutSelectors } from '../checkout';
 import { MissingDataError, MissingDataErrorType } from '../common/error/errors';
-import { Registry } from '../common/registry';
-import { RegistryOptions } from '../common/registry/registry';
+import { Registry, RegistryOptions } from '../common/registry';
 
 import PaymentMethod from './payment-method';
 import * as paymentMethodTypes from './payment-method-types';
 import PaymentStrategyType from './payment-strategy-type';
-import PaymentStrategy from './strategies/payment-strategy';
+import { PaymentStrategy } from './strategies';
 
 export default class PaymentStrategyRegistry extends Registry<PaymentStrategy, PaymentStrategyType> {
     constructor(
@@ -34,6 +33,27 @@ export default class PaymentStrategyRegistry extends Registry<PaymentStrategy, P
     }
 
     private _getToken(paymentMethod: PaymentMethod): PaymentStrategyType {
+        if (paymentMethod.gateway === 'klarna') {
+            return PaymentStrategyType.KLARNAV2;
+        }
+
+        if (paymentMethod.id === PaymentStrategyType.PAYPAL_COMMERCE_CREDIT) {
+            return PaymentStrategyType.PAYPAL_COMMERCE;
+        }
+
+        if ( paymentMethod.gateway === PaymentStrategyType.PAYPAL_COMMERCE_ALTERNATIVE_METHODS) {
+            return PaymentStrategyType.PAYPAL_COMMERCE_ALTERNATIVE_METHODS;
+        }
+
+        if (paymentMethod.gateway === PaymentStrategyType.CHECKOUTCOM) {
+            switch (paymentMethod.id) {
+                case 'credit_card':
+                    return PaymentStrategyType.CHECKOUTCOM;
+                default:
+                    return PaymentStrategyType.CHECKOUTCOM_APM;
+            }
+        }
+
         const methodId = paymentMethod.gateway || paymentMethod.id;
 
         if (this._hasFactoryForMethod(methodId)) {
@@ -70,7 +90,7 @@ export default class PaymentStrategyRegistry extends Registry<PaymentStrategy, P
 
         const { clientSidePaymentProviders } = config.paymentSettings;
 
-        if (!clientSidePaymentProviders || paymentMethod.gateway === 'adyen') {
+        if (!clientSidePaymentProviders || paymentMethod.gateway === 'adyen' || paymentMethod.gateway === 'barclaycard') {
             return false;
         }
 

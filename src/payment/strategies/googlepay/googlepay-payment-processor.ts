@@ -3,29 +3,13 @@ import { RequestSender, Response } from '@bigcommerce/request-sender';
 import { AddressRequestBody } from '../../../address';
 import { BillingAddressActionCreator, BillingAddressUpdateRequestBody } from '../../../billing';
 import { CheckoutStore, InternalCheckoutSelectors } from '../../../checkout';
-import {
-    MissingDataError,
-    MissingDataErrorType,
-    NotInitializedError,
-    NotInitializedErrorType,
-} from '../../../common/error/errors';
+import { MissingDataError, MissingDataErrorType, NotInitializedError, NotInitializedErrorType } from '../../../common/error/errors';
 import { RemoteCheckoutSynchronizationError } from '../../../remote-checkout/errors';
 import { ConsignmentActionCreator } from '../../../shipping';
-import PaymentMethodInvalidError from '../../errors/payment-method-invalid-error';
+import { PaymentMethodInvalidError } from '../../errors';
 import PaymentMethodActionCreator from '../../payment-method-action-creator';
 
-import {
-    ButtonColor,
-    ButtonType,
-    EnvironmentType,
-    GooglePaymentData,
-    GooglePayAddress,
-    GooglePayClient,
-    GooglePayInitializer,
-    GooglePayPaymentDataRequestV2,
-    GooglePaySDK,
-    TokenizePayload
-} from './googlepay';
+import { ButtonColor, ButtonType, EnvironmentType, GooglePaymentData, GooglePayAddress, GooglePayClient, GooglePayInitializer, GooglePayPaymentDataRequestV2, GooglePaySDK, TokenizePayload } from './googlepay';
 import GooglePayScriptLoader from './googlepay-script-loader';
 
 export default class GooglePayPaymentProcessor {
@@ -39,7 +23,7 @@ export default class GooglePayPaymentProcessor {
         private _googlePayScriptLoader: GooglePayScriptLoader,
         private _googlePayInitializer: GooglePayInitializer,
         private _billingAddressActionCreator: BillingAddressActionCreator,
-        private _consigmentActionCreator: ConsignmentActionCreator,
+        private _consignmentActionCreator: ConsignmentActionCreator,
         private _requestSender: RequestSender
     ) {}
 
@@ -78,13 +62,14 @@ export default class GooglePayPaymentProcessor {
     }
 
     handleSuccess(paymentData: GooglePaymentData): Promise<InternalCheckoutSelectors> {
-        return this._postForm(this._googlePayInitializer.parseResponse(paymentData))
+        return this._googlePayInitializer.parseResponse(paymentData)
+            .then(tokenizePayload => this._postForm(tokenizePayload))
             .then(() => this._updateBillingAddress(paymentData));
     }
 
     updateShippingAddress(shippingAddress: GooglePayAddress): Promise<InternalCheckoutSelectors> {
         return this._store.dispatch(
-            this._consigmentActionCreator.updateAddress(this._mapGooglePayAddressToShippingAddress(shippingAddress))
+            this._consignmentActionCreator.updateAddress(this._mapGooglePayAddressToShippingAddress(shippingAddress))
         );
     }
 

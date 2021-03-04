@@ -22,9 +22,9 @@ export function getOrder(): Order {
         customerCanBeCreated: true,
         customerId: 0,
         discountAmount: 10,
+        handlingCostTotal: 8,
         hasDigitalItems: false,
         isComplete: true,
-        status: 'ORDER_STATUS_AWAITING_FULFILLMENT',
         isDownloadable: false,
         isTaxIncluded: false,
         lineItems: {
@@ -37,23 +37,24 @@ export function getOrder(): Order {
             ],
             customItems: [],
         },
-         taxes: [
+        orderAmount: 190,
+        orderAmountAsInteger: 19000,
+        giftWrappingCostTotal: 0,
+        orderId: 295,
+        payments: [
+            getGatewayOrderPayment(),
+            getGiftCertificateOrderPayment(),
+        ],
+        shippingCostTotal: 15,
+        shippingCostBeforeDiscount: 20,
+        status: 'ORDER_STATUS_AWAITING_FULFILLMENT',
+        taxes: [
             {
                 name: 'Tax',
                 amount: 3,
             },
         ],
         taxTotal: 3,
-        shippingCostTotal: 15,
-        shippingCostBeforeDiscount: 20,
-        handlingCostTotal: 8,
-        orderAmount: 190,
-        orderAmountAsInteger: 19000,
-        orderId: 295,
-        payments: [
-            getGatewayOrderPayment(),
-            getGiftCertificateOrderPayment(),
-        ],
     };
 }
 

@@ -1,15 +1,6 @@
 import { NotInitializedError, NotInitializedErrorType } from '../../../common/error/errors';
 
-import {
-    BraintreeClient,
-    BraintreeDataCollector,
-    BraintreeModule,
-    BraintreePaypal,
-    BraintreePaypalCheckout,
-    BraintreeThreeDSecure,
-    BraintreeVisaCheckout,
-    GooglePayBraintreeSDK,
-} from './braintree';
+import { BraintreeClient, BraintreeDataCollector, BraintreeHostedFields, BraintreeHostedFieldsCreatorConfig, BraintreeModule, BraintreePaypal, BraintreePaypalCheckout, BraintreeThreeDSecure, BraintreeVisaCheckout, GooglePayBraintreeSDK } from './braintree';
 import BraintreeScriptLoader from './braintree-script-loader';
 
 export default class BraintreeSDKCreator {
@@ -76,7 +67,7 @@ export default class BraintreeSDKCreator {
                 this.getClient(),
                 this._braintreeScriptLoader.load3DS(),
             ])
-            .then(([client, threeDSecure]) => threeDSecure.create({ client }));
+            .then(([client, threeDSecure]) => threeDSecure.create({ client, version: 2}));
         }
 
         return this._3ds;
@@ -128,6 +119,17 @@ export default class BraintreeSDKCreator {
         }
 
         return this._googlePay;
+    }
+
+    async createHostedFields(
+        options: Pick<BraintreeHostedFieldsCreatorConfig, 'fields' | 'styles'>
+    ): Promise<BraintreeHostedFields> {
+        const [client, hostedFields] = await Promise.all([
+            this.getClient(),
+            this._braintreeScriptLoader.loadHostedFields(),
+        ]);
+
+        return hostedFields.create({ ...options, client });
     }
 
     teardown(): Promise<void> {

@@ -1,50 +1,40 @@
-import { createAction } from '@bigcommerce/data-store';
 import { createRequestSender, Response } from '@bigcommerce/request-sender';
-import { createScriptLoader } from '@bigcommerce/script-loader';
 import { merge, omit } from 'lodash';
 import { from, of } from 'rxjs';
 import { catchError, toArray } from 'rxjs/operators';
 
 import { getCart, getCartState } from '../cart/carts.mock';
 import { createCheckoutStore, CheckoutRequestSender, CheckoutStore, CheckoutStoreState, CheckoutValidator } from '../checkout';
-import { getCheckout, getCheckoutStoreState } from '../checkout/checkouts.mock';
+import { getCheckout, getCheckoutState, getCheckoutStoreState } from '../checkout/checkouts.mock';
 import { ErrorResponseBody } from '../common/error';
 import { MissingDataError } from '../common/error/errors';
 import { InternalResponseBody } from '../common/http-request';
 import { getErrorResponse, getResponse } from '../common/http-request/responses.mock';
-import { getConfig, getConfigState } from '../config/configs.mock';
+import { getConfigState } from '../config/configs.mock';
+import { SpamProtectionNotCompletedError } from '../spam-protection/errors';
 
 import { InternalOrderResponseBody } from './internal-order-responses';
-import {
-    getCompleteOrderResponseBody,
-    getInternalOrderRequestBody,
-    getOrderRequestBody,
-    getSubmitOrderResponseBody,
-    getSubmitOrderResponseHeaders,
-} from './internal-orders.mock';
+import { getCompleteOrderResponseBody, getInternalOrderRequestBody, getOrderRequestBody, getSubmitOrderResponseBody, getSubmitOrderResponseHeaders } from './internal-orders.mock';
 import Order from './order';
 import OrderActionCreator from './order-action-creator';
 import { OrderActionType } from './order-actions';
 import OrderRequestSender from './order-request-sender';
 import { getOrder, getOrderState } from './orders.mock';
-import { createSpamProtection, SpamProtectionActionCreator, SpamProtectionActionType } from './spam-protection';
 
 describe('OrderActionCreator', () => {
     let orderRequestSender: OrderRequestSender;
     let checkoutValidator: CheckoutValidator;
     let checkoutRequestSender: CheckoutRequestSender;
     let orderActionCreator: OrderActionCreator;
-    let spamProtectionActionCreator: SpamProtectionActionCreator;
     let state: CheckoutStoreState;
     let store: CheckoutStore;
 
     beforeEach(() => {
-        state = { ...getCheckoutStoreState(),
+        state = {
+            ...getCheckoutStoreState(),
             order: {
                 errors: {},
-                meta: {
-                    spamProtectionToken: 'spamProtectionToken',
-                },
+                meta: {},
                 statuses: {},
             },
         };
@@ -55,7 +45,6 @@ describe('OrderActionCreator', () => {
         orderRequestSender = new OrderRequestSender(createRequestSender());
         checkoutRequestSender = new CheckoutRequestSender(createRequestSender());
         checkoutValidator = new CheckoutValidator(checkoutRequestSender);
-        spamProtectionActionCreator = new SpamProtectionActionCreator(createSpamProtection(createScriptLoader()));
 
         jest.spyOn(orderRequestSender, 'loadOrder').mockReturnValue({});
         jest.spyOn(orderRequestSender, 'submitOrder').mockReturnValue({});
@@ -64,12 +53,7 @@ describe('OrderActionCreator', () => {
         jest.spyOn(checkoutValidator, 'validate')
             .mockReturnValue(Promise.resolve());
 
-        jest.spyOn(spamProtectionActionCreator, 'execute').mockReturnValue(from([
-            createAction(SpamProtectionActionType.ExecuteRequested),
-            createAction(SpamProtectionActionType.Completed, { token: 'spamProtectionToken' }),
-        ]));
-
-        orderActionCreator = new OrderActionCreator(orderRequestSender, checkoutValidator, spamProtectionActionCreator);
+        orderActionCreator = new OrderActionCreator(orderRequestSender, checkoutValidator);
     });
 
     describe('#loadOrder()', () => {
@@ -289,21 +273,30 @@ describe('OrderActionCreator', () => {
             expect(checkoutValidator.validate).toHaveBeenCalled();
         });
 
-        it('throws error if spam protection is enabled but no token is provided', async () => {
-            state = { ...getCheckoutStoreState(),
+        it('throws error if spam check should be run', async () => {
+            const checkout = getCheckout();
+            checkout.shouldExecuteSpamCheck = true;
+            const checkoutState = getCheckoutState();
+            checkoutState.data = checkout;
+            const checkoutStoreState = {
+                ...getCheckoutStoreState(),
+                checkout: checkoutState,
+            };
+            const state = {
+                ...checkoutStoreState,
                 order: {
                     errors: {},
                     meta: {},
                     statuses: {},
                 },
             };
-            store = createCheckoutStore(state);
+            const store = createCheckoutStore(state);
 
             try {
                 await from(orderActionCreator.submitOrder(getOrderRequestBody())(store))
                     .toPromise();
             } catch (error) {
-                expect(error.payload).toBeInstanceOf(MissingDataError);
+                expect(error.payload).toBeInstanceOf(SpamProtectionNotCompletedError);
             }
         });
 
@@ -311,14 +304,22 @@ describe('OrderActionCreator', () => {
             await from(orderActionCreator.submitOrder(getOrderRequestBody())(store))
                 .toPromise();
 
-            expect(orderRequestSender.submitOrder).toHaveBeenCalledWith(getInternalOrderRequestBody(), undefined);
+            expect(orderRequestSender.submitOrder)
+                .toHaveBeenCalledWith(
+                    getInternalOrderRequestBody(),
+                    { headers: { checkoutVariant: 'default' } }
+                );
         });
 
         it('submits order payload without payment data', async () => {
             await from(orderActionCreator.submitOrder(omit(getOrderRequestBody(), 'payment'))(store))
                 .toPromise();
 
-            expect(orderRequestSender.submitOrder).toHaveBeenCalledWith(omit(getInternalOrderRequestBody(), 'payment'), undefined);
+            expect(orderRequestSender.submitOrder)
+                .toHaveBeenCalledWith(
+                    omit(getInternalOrderRequestBody(), 'payment'),
+                    { headers: { checkoutVariant: 'default' } }
+                );
         });
 
         it('does not submit order if cart verification fails', async () => {
@@ -392,38 +393,6 @@ describe('OrderActionCreator', () => {
                 { type: OrderActionType.FinalizeOrderRequested },
                 { type: OrderActionType.FinalizeOrderFailed, payload: errorResponse, error: true },
             ]);
-        });
-    });
-
-    describe('#executeSpamProtection()', () => {
-        it('emits actions if able to execute spam protection', async () => {
-            const actions = await from(orderActionCreator.executeSpamProtection()(store))
-                .pipe(toArray())
-                .toPromise();
-
-            expect(actions).toEqual([
-                { type: SpamProtectionActionType.ExecuteRequested },
-                { type: SpamProtectionActionType.Completed, payload: { token: 'spamProtectionToken' } },
-            ]);
-        });
-
-        it('does not emit actions if spam protection is disabled', async () => {
-            const config = getConfig();
-            config.storeConfig.checkoutSettings.isSpamProtectionEnabled = false;
-            const configState = { ...getConfigState(),
-                data: config,
-            };
-            const state = { ...getCheckoutStoreState(),
-                config: configState,
-            };
-
-            const store = createCheckoutStore(state);
-
-            const actions = await from(orderActionCreator.executeSpamProtection()(store))
-                .pipe(toArray())
-                .toPromise();
-
-            expect(actions).toEqual([]);
         });
     });
 });

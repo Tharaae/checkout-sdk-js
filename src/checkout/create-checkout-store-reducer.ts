@@ -6,13 +6,16 @@ import { checkoutButtonReducer } from '../checkout-buttons';
 import { configReducer } from '../config';
 import { couponReducer, giftCertificateReducer } from '../coupon';
 import { customerReducer, customerStrategyReducer } from '../customer';
+import { formFieldsReducer } from '../form';
 import { countryReducer } from '../geography';
 import { orderReducer } from '../order';
 import { paymentMethodReducer, paymentReducer, paymentStrategyReducer } from '../payment';
 import { instrumentReducer } from '../payment/instrument';
 import { remoteCheckoutReducer } from '../remote-checkout';
 import { consignmentReducer, shippingCountryReducer, shippingStrategyReducer } from '../shipping';
+import { signInEmailReducer } from '../signin-email';
 import { storeCreditReducer } from '../store-credit';
+import { subscriptionsReducer } from '../subscription';
 
 import checkoutReducer from './checkout-reducer';
 import CheckoutStoreState from './checkout-store-state';
@@ -29,6 +32,7 @@ export default function createCheckoutStoreReducer(): Reducer<CheckoutStoreState
         coupons: couponReducer,
         customer: customerReducer,
         customerStrategies: customerStrategyReducer,
+        formFields: formFieldsReducer,
         giftCertificates: giftCertificateReducer,
         instruments: instrumentReducer,
         order: orderReducer,
@@ -38,6 +42,8 @@ export default function createCheckoutStoreReducer(): Reducer<CheckoutStoreState
         remoteCheckout: remoteCheckoutReducer,
         shippingCountries: shippingCountryReducer,
         shippingStrategies: shippingStrategyReducer,
+        signInEmail: signInEmailReducer,
+        subscriptions: subscriptionsReducer,
         storeCredit: storeCreditReducer,
     });
 }

@@ -1,19 +1,14 @@
-
 import { createRequestSender, RequestSender } from '@bigcommerce/request-sender';
 import { createScriptLoader } from '@bigcommerce/script-loader';
 
 import { CheckoutButtonInitializeOptions } from '../..';
 import { getCartState } from '../../../cart/carts.mock';
-import {
-    createCheckoutStore,
-    Checkout,
-    CheckoutActionCreator,
-    CheckoutRequestSender,
-    CheckoutStore
-} from '../../../checkout';
+import { createCheckoutStore, Checkout, CheckoutActionCreator, CheckoutRequestSender, CheckoutStore } from '../../../checkout';
 import { getCheckout, getCheckoutState } from '../../../checkout/checkouts.mock';
 import { InvalidArgumentError, MissingDataError } from '../../../common/error/errors';
 import { ConfigActionCreator, ConfigRequestSender } from '../../../config';
+import { getConfig } from '../../../config/configs.mock';
+import { FormFieldsActionCreator, FormFieldsRequestSender } from '../../../form';
 import { PaymentMethod } from '../../../payment';
 import { getMasterpass, getPaymentMethodsState } from '../../../payment/payment-methods.mock';
 import { Masterpass, MasterpassScriptLoader } from '../../../payment/strategies/masterpass';
@@ -23,7 +18,7 @@ import CheckoutButtonStrategy from '../checkout-button-strategy';
 
 import MasterpassButtonStrategy from './masterpass-button-strategy';
 
-describe('MasterpassCustomerStrategy', () => {
+describe('MasterpassButtonStrategy', () => {
     let container: HTMLDivElement;
     let containerFoo: HTMLDivElement;
     let masterpass: Masterpass;
@@ -58,6 +53,9 @@ describe('MasterpassCustomerStrategy', () => {
         jest.spyOn(store.getState().paymentMethods, 'getPaymentMethod')
             .mockReturnValue(paymentMethodMock);
 
+        jest.spyOn(store.getState().config, 'getStoreConfig')
+        .mockReturnValue(getConfig().storeConfig);
+
         jest.spyOn(store.getState().checkout, 'getCheckout')
             .mockReturnValue(checkoutMock);
 
@@ -72,7 +70,8 @@ describe('MasterpassCustomerStrategy', () => {
 
         checkoutActionCreator = new CheckoutActionCreator(
             new CheckoutRequestSender(requestSender),
-            new ConfigActionCreator(new ConfigRequestSender(requestSender))
+            new ConfigActionCreator(new ConfigRequestSender(requestSender)),
+            new FormFieldsActionCreator(new FormFieldsRequestSender(requestSender))
         );
 
         strategy = new MasterpassButtonStrategy(
@@ -108,7 +107,7 @@ describe('MasterpassCustomerStrategy', () => {
 
             await strategy.initialize(masterpassOptions);
 
-            expect(masterpassScriptLoader.load).toHaveBeenLastCalledWith(true);
+            expect(masterpassScriptLoader.load).toHaveBeenLastCalledWith(true, 'en_US', 'checkoutId');
         });
 
         it('loads masterpass without test mode if disabled', async () => {
@@ -116,7 +115,7 @@ describe('MasterpassCustomerStrategy', () => {
 
             await strategy.initialize(masterpassOptions);
 
-            expect(masterpassScriptLoader.load).toHaveBeenLastCalledWith(false);
+            expect(masterpassScriptLoader.load).toHaveBeenLastCalledWith(false, 'en_US', 'checkoutId');
         });
 
         it('fails to initialize the strategy if no container is supplied', async () => {

@@ -1,52 +1,43 @@
-[@bigcommerce/checkout-sdk](../README.md) > [OrderPaymentRequestBody](../interfaces/orderpaymentrequestbody.md)
+[@bigcommerce/checkout-sdk](../README.md) › [OrderPaymentRequestBody](orderpaymentrequestbody.md)
 
-# OrderPaymentRequestBody
+# Interface: OrderPaymentRequestBody
 
-An object that contains the payment information required for submitting an order.
+An object that contains the payment information required for submitting an
+order.
 
 ## Hierarchy
 
-**OrderPaymentRequestBody**
+* **OrderPaymentRequestBody**
 
 ## Index
 
 ### Properties
 
-* [gatewayId](orderpaymentrequestbody.md#gatewayid)
+* [gatewayId](orderpaymentrequestbody.md#optional-gatewayid)
 * [methodId](orderpaymentrequestbody.md#methodid)
-* [paymentData](orderpaymentrequestbody.md#paymentdata)
-
----
+* [paymentData](orderpaymentrequestbody.md#optional-paymentdata)
 
 ## Properties
 
-<a id="gatewayid"></a>
+### `Optional` gatewayId
 
-### `<Optional>` gatewayId
-
-**● gatewayId**: * `undefined` &#124; `string`
-*
+• **gatewayId**? : *undefined | string*
 
 The identifier of the payment provider that is chosen for the order.
 
 ___
-<a id="methodid"></a>
 
 ###  methodId
 
-**● methodId**: *`string`*
+• **methodId**: *string*
 
 The identifier of the payment method that is chosen for the order.
 
 ___
-<a id="paymentdata"></a>
 
-### `<Optional>` paymentData
+### `Optional` paymentData
 
-**● paymentData**: * [CreditCardInstrument](creditcardinstrument.md) &#124; [VaultedInstrument](vaultedinstrument.md) &#124; [HostedInstrument](hostedinstrument.md)
-*
+• **paymentData**? : *[CreditCardInstrument](creditcardinstrument.md) | [HostedInstrument](hostedinstrument.md) | [HostedCreditCardInstrument](../README.md#hostedcreditcardinstrument) | [HostedVaultedInstrument](../README.md#hostedvaultedinstrument) | [NonceInstrument](nonceinstrument.md) | [VaultedInstrument](vaultedinstrument.md) | [CreditCardInstrument](creditcardinstrument.md) & [WithDocumentInstrument](withdocumentinstrument.md)*
 
-An object that contains the details of a credit card or vaulted payment instrument.
-
-___
-
+An object that contains the details of a credit card, vaulted payment
+instrument or nonce instrument.

@@ -1,14 +1,8 @@
 import { Response } from '@bigcommerce/request-sender';
 import { last } from 'lodash';
 
-import ErrorResponseBody, {
-    InternalErrorResponseBody,
-    StorefrontErrorResponseBody
-} from './error-response-body';
-import { RequestError, TimeoutError } from './errors';
-import mapFromInternalErrorResponse from './errors/map-from-internal-error-response';
-import mapFromPaymentErrorResponse from './errors/map-from-payment-error-response';
-import mapFromStorefrontErrorResponse from './errors/map-from-storefront-error-response';
+import ErrorResponseBody, { InternalErrorResponseBody, StorefrontErrorResponseBody } from './error-response-body';
+import { mapFromInternalErrorResponse, mapFromPaymentErrorResponse, mapFromStorefrontErrorResponse, RequestError, TimeoutError } from './errors';
 
 export default class RequestErrorFactory {
     private _factoryMethods: { [key: string]: ErrorFactoryMethod } = {};
@@ -25,7 +19,7 @@ export default class RequestErrorFactory {
         this._factoryMethods[type] = factoryMethod;
     }
 
-    createError(response: Response, message?: string): RequestError {
+    createError(response: Response<any>, message?: string): RequestError {
         const factoryMethod = this._factoryMethods[this._getType(response)] || this._factoryMethods.default;
 
         return factoryMethod(response, message);
@@ -81,4 +75,4 @@ export default class RequestErrorFactory {
     }
 }
 
-export type ErrorFactoryMethod = (response: Response, message?: string) => RequestError;
+export type ErrorFactoryMethod<T = any> = (response: Response<T>, message?: string) => RequestError;

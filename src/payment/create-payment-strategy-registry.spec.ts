@@ -3,7 +3,7 @@ import { createRequestSender } from '@bigcommerce/request-sender';
 import { createScriptLoader } from '@bigcommerce/script-loader';
 
 import { createCheckoutStore } from '../checkout';
-import { createSpamProtection } from '../order/spam-protection';
+import { createSpamProtection } from '../spam-protection';
 
 import createPaymentStrategyRegistry from './create-payment-strategy-registry';
 import PaymentStrategyRegistry from './payment-strategy-registry';
@@ -12,15 +12,16 @@ import { AdyenV2PaymentStrategy } from './strategies/adyenv2';
 import { AffirmPaymentStrategy } from './strategies/affirm';
 import { AfterpayPaymentStrategy } from './strategies/afterpay';
 import { AmazonPayPaymentStrategy } from './strategies/amazon-pay';
-import {
-    BraintreeCreditCardPaymentStrategy,
-    BraintreePaypalPaymentStrategy,
-    BraintreeVisaCheckoutPaymentStrategy
-} from './strategies/braintree';
+import { BarclaysPaymentStrategy } from './strategies/barclays';
+import { BlueSnapV2PaymentStrategy } from './strategies/bluesnapv2';
+import { BraintreeCreditCardPaymentStrategy, BraintreePaypalPaymentStrategy, BraintreeVisaCheckoutPaymentStrategy } from './strategies/braintree';
 import { ChasepayPaymentStrategy } from './strategies/chasepay';
+import { CheckoutcomAPMPaymentStrategy } from './strategies/checkoutcom-apm';
 import { ConvergePaymentStrategy } from './strategies/converge';
 import { CreditCardPaymentStrategy } from './strategies/credit-card';
+import { CreditCardRedirectPaymentStrategy } from './strategies/credit-card-redirect';
 import { CyberSourcePaymentStrategy } from './strategies/cybersource';
+import { CyberSourceV2PaymentStrategy } from './strategies/cybersourcev2';
 import { GooglePayPaymentStrategy } from './strategies/googlepay';
 import { KlarnaPaymentStrategy } from './strategies/klarna';
 import { LegacyPaymentStrategy } from './strategies/legacy';
@@ -29,6 +30,7 @@ import { NoPaymentDataRequiredPaymentStrategy } from './strategies/no-payment';
 import { OfflinePaymentStrategy } from './strategies/offline';
 import { OffsitePaymentStrategy } from './strategies/offsite';
 import { PaypalExpressPaymentStrategy, PaypalProPaymentStrategy } from './strategies/paypal';
+import { PaypalCommercePaymentStrategy } from './strategies/paypal-commerce';
 import { SagePayPaymentStrategy } from './strategies/sage-pay';
 import { SquarePaymentStrategy } from './strategies/square';
 import { StripeV3PaymentStrategy } from './strategies/stripev3';
@@ -55,6 +57,11 @@ describe('CreatePaymentStrategyRegistry', () => {
         expect(paymentStrategy).toBeInstanceOf(AdyenV2PaymentStrategy);
     });
 
+    it('can instantiate googlepayadyenv2', () => {
+        const paymentStrategy = registry.get(PaymentStrategyType.ADYENV2_GOOGLEPAY);
+        expect(paymentStrategy).toBeInstanceOf(GooglePayPaymentStrategy);
+    });
+
     it('can instantiate affirm', () => {
         const paymentStrategy = registry.get(PaymentStrategyType.AFFIRM);
         expect(paymentStrategy).toBeInstanceOf(AffirmPaymentStrategy);
@@ -70,9 +77,24 @@ describe('CreatePaymentStrategyRegistry', () => {
         expect(paymentStrategy).toBeInstanceOf(AfterpayPaymentStrategy);
     });
 
+    it('can instantiate barclays', () => {
+        const paymentStrategy = registry.get(PaymentStrategyType.BARCLAYS);
+        expect(paymentStrategy).toBeInstanceOf(BarclaysPaymentStrategy);
+    });
+
     it('can instantiate braintree', () => {
         const paymentStrategy = registry.get(PaymentStrategyType.BRAINTREE);
         expect(paymentStrategy).toBeInstanceOf(BraintreeCreditCardPaymentStrategy);
+    });
+
+    it('can instantiate APM', () => {
+        const paymentStrategy = registry.get(PaymentStrategyType.PAYPAL_COMMERCE_ALTERNATIVE_METHODS);
+        expect(paymentStrategy).toBeInstanceOf(PaypalCommercePaymentStrategy);
+    });
+
+    it('can instantiate bluesnapv2', () => {
+        const paymentStrategy = registry.get(PaymentStrategyType.BLUESNAPV2);
+        expect(paymentStrategy).toBeInstanceOf(BlueSnapV2PaymentStrategy);
     });
 
     it('can instantiate braintreepaypal', () => {
@@ -95,6 +117,16 @@ describe('CreatePaymentStrategyRegistry', () => {
         expect(paymentStrategy).toBeInstanceOf(ChasepayPaymentStrategy);
     });
 
+    it('can instantiate checkout.com', () => {
+        const paymentStrategy = registry.get(PaymentStrategyType.CHECKOUTCOM);
+        expect(paymentStrategy).toBeInstanceOf(CreditCardRedirectPaymentStrategy);
+    });
+
+    it('can instantiate checkout.com apms', () => {
+        const paymentStrategy = registry.get(PaymentStrategyType.CHECKOUTCOM_APM);
+        expect(paymentStrategy).toBeInstanceOf(CheckoutcomAPMPaymentStrategy);
+    });
+
     it('can instantiate converge', () => {
         const paymentStrategy = registry.get(PaymentStrategyType.CONVERGE);
         expect(paymentStrategy).toBeInstanceOf(ConvergePaymentStrategy);
@@ -108,6 +140,16 @@ describe('CreatePaymentStrategyRegistry', () => {
     it('can instantiate cybersource', () => {
         const paymentStrategy = registry.get(PaymentStrategyType.CYBERSOURCE);
         expect(paymentStrategy).toBeInstanceOf(CyberSourcePaymentStrategy);
+    });
+
+    it('can instantiate cybersourcev2', () => {
+        const paymentStrategy = registry.get(PaymentStrategyType.CYBERSOURCEV2);
+        expect(paymentStrategy).toBeInstanceOf(CyberSourceV2PaymentStrategy);
+    });
+
+    it('can instantiate googlepaycybersourcev2', () => {
+        const paymentStrategy = registry.get(PaymentStrategyType.CYBERSOURCEV2_GOOGLE_PAY);
+        expect(paymentStrategy).toBeInstanceOf(GooglePayPaymentStrategy);
     });
 
     it('can instantiate klarna', () => {
@@ -162,6 +204,11 @@ describe('CreatePaymentStrategyRegistry', () => {
 
     it('can instantiate googlepaybraintree', () => {
         const paymentStrategy = registry.get(PaymentStrategyType.BRAINTREE_GOOGLE_PAY);
+        expect(paymentStrategy).toBeInstanceOf(GooglePayPaymentStrategy);
+    });
+
+    it('can instantiate googlepaycybersourcev2', () => {
+        const paymentStrategy = registry.get(PaymentStrategyType.CYBERSOURCEV2_GOOGLE_PAY);
         expect(paymentStrategy).toBeInstanceOf(GooglePayPaymentStrategy);
     });
 

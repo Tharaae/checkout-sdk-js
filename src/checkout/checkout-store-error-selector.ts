@@ -140,6 +140,17 @@ export default interface CheckoutStoreErrorSelector {
     /**
      * Returns an error if unable to continue as guest.
      *
+     * The call could fail in scenarios where guest checkout is not allowed, for example, when existing accounts are required to sign-in.
+     *
+     * In the background, this call tries to set the billing address email using the Storefront API. You could access the Storefront API response status code using `getContinueAsGuestError` error selector.
+     *
+     * ```js
+     * console.log(state.errors.getContinueAsGuestError());
+     * console.log(state.errors.getContinueAsGuestError().status);
+     * ```
+     *
+     * For more information about status codes, check [Checkout Storefront API - Add Checkout Billing Address](https://developer.bigcommerce.com/api-reference/cart-checkout/storefront-checkout-api/checkout-billing-address/checkoutsbillingaddressbycheckoutidpost).
+     *
      * @returns The error object if unable to continue, otherwise undefined.
      */
     getContinueAsGuestError(): Error | undefined;
@@ -150,6 +161,13 @@ export default interface CheckoutStoreErrorSelector {
      * @returns The error object if unable to update, otherwise undefined.
      */
     getUpdateBillingAddressError(): Error | undefined;
+
+    /**
+     * Returns an error if unable to update subscriptions.
+     *
+     * @returns The error object if unable to update, otherwise undefined.
+     */
+    getUpdateSubscriptionsError(): Error | undefined;
 
     /**
      * Returns an error if unable to update shipping address.
@@ -252,6 +270,27 @@ export default interface CheckoutStoreErrorSelector {
      * @returns The error object if unable to load, otherwise undefined.
      */
     getLoadConfigError(): Error | undefined;
+
+    /**
+     * Returns an error if unable to send sign-in email.
+     *
+     * @returns The error object if unable to send email, otherwise undefined.
+     */
+    getSignInEmailError(): Error | undefined;
+
+    /**
+     * Returns an error if unable to create customer account.
+     *
+     * @returns The error object if unable to create account, otherwise undefined.
+     */
+    getCreateCustomerAccountError(): Error | undefined;
+
+    /**
+     * Returns an error if unable to create customer address.
+     *
+     * @returns The error object if unable to create address, otherwise undefined.
+     */
+    getCreateCustomerAddressError(): Error | undefined;
 }
 
 export type CheckoutStoreErrorSelectorFactory = (state: InternalCheckoutSelectors) => CheckoutStoreErrorSelector;
@@ -303,6 +342,7 @@ export function createCheckoutStoreErrorSelectorFactory(): CheckoutStoreErrorSel
             getSelectShippingOptionError: getSelectShippingOptionError(state),
             getContinueAsGuestError: state.billingAddress.getContinueAsGuestError,
             getUpdateBillingAddressError: state.billingAddress.getUpdateError,
+            getUpdateSubscriptionsError: state.subscriptions.getUpdateError,
             getUpdateShippingAddressError: state.shippingStrategies.getUpdateAddressError,
             getDeleteConsignmentError: state.consignments.getDeleteError,
             getUpdateConsignmentError: state.consignments.getUpdateError,
@@ -316,6 +356,9 @@ export function createCheckoutStoreErrorSelectorFactory(): CheckoutStoreErrorSel
             getLoadInstrumentsError: state.instruments.getLoadError,
             getDeleteInstrumentError: state.instruments.getDeleteError,
             getLoadConfigError: state.config.getLoadError,
+            getSignInEmailError: state.signInEmail.getSendError,
+            getCreateCustomerAccountError: state.customer.getCreateAccountError,
+            getCreateCustomerAddressError: state.customer.getCreateAddressError,
         };
 
         return {

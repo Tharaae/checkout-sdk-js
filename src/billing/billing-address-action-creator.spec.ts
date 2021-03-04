@@ -1,3 +1,4 @@
+import { createErrorAction } from '@bigcommerce/data-store';
 import { createRequestSender, Response } from '@bigcommerce/request-sender';
 import { omit } from 'lodash';
 import { from, of } from 'rxjs';
@@ -8,10 +9,12 @@ import { createCheckoutStore, Checkout, CheckoutStore, CheckoutStoreState } from
 import { getCheckout, getCheckoutStoreState } from '../checkout/checkouts.mock';
 import { MissingDataError, StandardError } from '../common/error/errors';
 import { getErrorResponse, getResponse } from '../common/http-request/responses.mock';
+import { SubscriptionsActionCreator, SubscriptionsActionType, SubscriptionsRequestSender, UpdateSubscriptionsAction } from '../subscription';
+import { UpdateSubscriptionsError } from '../subscription/errors';
 
 import { BillingAddressRequestBody } from './billing-address';
 import BillingAddressActionCreator from './billing-address-action-creator';
-import { BillingAddressAction, BillingAddressActionType, UpdateBillingAddressAction } from './billing-address-actions';
+import { BillingAddressAction, BillingAddressActionType, ContinueAsGuestAction, UpdateBillingAddressAction } from './billing-address-actions';
 import BillingAddressRequestSender from './billing-address-request-sender';
 import { getBillingAddress } from './billing-addresses.mock';
 
@@ -19,22 +22,30 @@ describe('BillingAddressActionCreator', () => {
     let address: AddressRequestBody;
     let billingAddressActionCreator: BillingAddressActionCreator;
     let billingAddressRequestSender: BillingAddressRequestSender;
+    let subscriptionsRequestSender: SubscriptionsRequestSender;
+    let subscriptionsActionCreator: SubscriptionsActionCreator;
     let errorResponse: Response<Error>;
     let response: Response<Checkout>;
     let state: CheckoutStoreState;
     let store: CheckoutStore;
-    let actions: BillingAddressAction[] | BillingAddressAction | undefined;
+    let actions: Array<BillingAddressAction | UpdateSubscriptionsAction> | BillingAddressAction | ContinueAsGuestAction | UpdateSubscriptionsAction | undefined;
 
     beforeEach(() => {
         response = getResponse(getCheckout());
         errorResponse = getErrorResponse();
         state = getCheckoutStoreState();
         billingAddressRequestSender = new BillingAddressRequestSender(createRequestSender());
+        subscriptionsRequestSender = new SubscriptionsRequestSender(createRequestSender());
+        subscriptionsActionCreator = new SubscriptionsActionCreator(subscriptionsRequestSender);
 
         jest.spyOn(billingAddressRequestSender, 'updateAddress').mockImplementation(() => Promise.resolve(response));
         jest.spyOn(billingAddressRequestSender, 'createAddress').mockImplementation(() => Promise.resolve(response));
+        jest.spyOn(subscriptionsRequestSender, 'updateSubscriptions').mockImplementation(() => Promise.resolve(response));
 
-        billingAddressActionCreator = new BillingAddressActionCreator(billingAddressRequestSender);
+        billingAddressActionCreator = new BillingAddressActionCreator(
+            billingAddressRequestSender,
+            subscriptionsActionCreator
+        );
         address = getBillingAddress();
     });
 
@@ -90,7 +101,77 @@ describe('BillingAddressActionCreator', () => {
                 });
             });
 
-            it('emits actions if able to continue as guest', async () => {
+            it('emits customer actions if marketingEmailConsent is true', async () => {
+                actions = await from(billingAddressActionCreator.continueAsGuest({
+                    ...guestCredentials,
+                    acceptsAbandonedCartEmails: true,
+                })(store))
+                    .pipe(toArray())
+                    .toPromise();
+
+                expect(actions).toContainEqual({ type: SubscriptionsActionType.UpdateSubscriptionsRequested });
+                expect(actions).toContainEqual({ type: SubscriptionsActionType.UpdateSubscriptionsSucceeded, payload: response.body });
+            });
+
+            it('emits failed customer actions if failed to update', async () => {
+                jest.spyOn(subscriptionsRequestSender, 'updateSubscriptions')
+                    .mockReturnValue(Promise.reject(getErrorResponse()));
+
+                const errorHandler = jest.fn();
+
+                actions = await from(billingAddressActionCreator.continueAsGuest({
+                    ...guestCredentials,
+                    acceptsAbandonedCartEmails: true,
+                })(store))
+                    .pipe(
+                        catchError(error => {
+                            errorHandler(error);
+
+                            return of(error);
+                        }),
+                        toArray()
+                    )
+                    .toPromise();
+
+                expect(errorHandler)
+                    .toHaveBeenCalledWith(createErrorAction(SubscriptionsActionType.UpdateSubscriptionsFailed, new UpdateSubscriptionsError()));
+
+                expect(actions).toContainEqual({ type: SubscriptionsActionType.UpdateSubscriptionsRequested });
+                expect(actions).toContainEqual(expect.objectContaining({
+                    type: SubscriptionsActionType.UpdateSubscriptionsFailed,
+                }));
+            });
+
+            it('sends request to update subscriptions if marketingEmailConsent is false', async () => {
+                await from(billingAddressActionCreator.continueAsGuest({
+                    ...guestCredentials,
+                    acceptsAbandonedCartEmails: false,
+                }, {})(store))
+                    .toPromise();
+
+                expect(subscriptionsRequestSender.updateSubscriptions).toHaveBeenCalledWith({
+                    email: guestCredentials.email,
+                    acceptsAbandonedCartEmails: false,
+                    acceptsMarketingNewsletter: false,
+                }, {});
+            });
+
+            it('sends request to update subscriptions if marketingEmailConsent is true', async () => {
+                await from(billingAddressActionCreator.continueAsGuest({
+                    ...guestCredentials,
+                    acceptsAbandonedCartEmails: true,
+                    acceptsMarketingNewsletter: true,
+                }, {})(store))
+                    .toPromise();
+
+                expect(subscriptionsRequestSender.updateSubscriptions).toHaveBeenCalledWith({
+                    email: guestCredentials.email,
+                    acceptsAbandonedCartEmails: true,
+                    acceptsMarketingNewsletter: true,
+                }, {});
+            });
+
+            it('emits billing actions if able to continue as guest', async () => {
                 actions = await from(billingAddressActionCreator.continueAsGuest(guestCredentials)(store))
                     .pipe(toArray())
                     .toPromise();

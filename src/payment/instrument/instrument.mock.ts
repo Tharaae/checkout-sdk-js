@@ -1,4 +1,4 @@
-import Instrument, { InstrumentRequestContext, VaultAccessToken } from './instrument';
+import PaymentInstrument, { CardInstrument, InstrumentRequestContext, VaultAccessToken } from './instrument';
 import { InstrumentsResponseBody, InstrumentErrorResponseBody, InternalInstrumentsResponseBody, InternalVaultAccessTokenResponseBody } from './instrument-response-body';
 import InstrumentState, { InstrumentMeta } from './instrument-state';
 
@@ -13,7 +13,7 @@ export function getVaultAccessToken(): VaultAccessToken {
     };
 }
 
-export function getInstruments(): Instrument[] {
+export function getInstruments(): PaymentInstrument[] {
     return [
         {
             bigpayToken: '123',
@@ -25,6 +25,8 @@ export function getInstruments(): Instrument[] {
             brand: 'test',
             trustedShippingAddress: true,
             defaultInstrument: true,
+            method: 'credit_card',
+            type: 'card',
         },
         {
             bigpayToken: '111',
@@ -36,8 +38,60 @@ export function getInstruments(): Instrument[] {
             brand: 'test',
             trustedShippingAddress: false,
             defaultInstrument: false,
+            method: 'credit_card',
+            type: 'card',
+        },
+        {
+            bigpayToken: '31415',
+            provider: 'braintree',
+            trustedShippingAddress: false,
+            defaultInstrument: false,
+            type: 'account',
+            method: 'paypal',
+            externalId: 'test@external-id.com',
+        },
+        {
+            bigpayToken: '52346',
+            provider: 'ideal',
+            trustedShippingAddress: false,
+            accountNumber: 'DEFDEF',
+            issuer: 'TEST2',
+            defaultInstrument: false,
+            type: 'bank',
+            method: 'bank',
+            iban: 'DEFDEF',
+            externalId: 'test@external-id.com',
+        },
+        {
+            bigpayToken: '56789',
+            provider: 'adyenv2',
+            iin: '11111111',
+            last4: '4321',
+            expiryMonth: '02',
+            expiryYear: '2020',
+            brand: 'test',
+            trustedShippingAddress: true,
+            defaultInstrument: true,
+            method: 'scheme',
+            type: 'card',
         },
     ];
+}
+
+export function getCardInstrument(): CardInstrument {
+    return {
+        bigpayToken: '123',
+        provider: 'braintree',
+        iin: '11111111',
+        last4: '1111',
+        expiryMonth: '02',
+        expiryYear: '2020',
+        brand: 'visa',
+        trustedShippingAddress: true,
+        defaultInstrument: true,
+        method: 'card',
+        type: 'card',
+    };
 }
 
 export function getInstrumentsState(): InstrumentState {
@@ -95,6 +149,8 @@ export function getInternalInstrumentsResponseBody(): InternalInstrumentsRespons
                 brand: 'test',
                 trusted_shipping_address: true,
                 default_instrument: true,
+                method: 'credit_card',
+                method_type: 'card',
             },
             {
                 bigpay_token: '111',
@@ -106,6 +162,42 @@ export function getInternalInstrumentsResponseBody(): InternalInstrumentsRespons
                 brand: 'test',
                 trusted_shipping_address: false,
                 default_instrument: false,
+                method_type: 'card',
+                method: 'credit_card',
+            },
+            {
+                bigpay_token: '31415',
+                provider: 'braintree',
+                trusted_shipping_address: false,
+                default_instrument: false,
+                method_type: 'paypal',
+                method: 'paypal',
+                external_id: 'test@external-id.com',
+            },
+            {
+                bigpay_token: '52346',
+                provider: 'ideal',
+                trusted_shipping_address: false,
+                account_number: 'DEFDEF',
+                issuer: 'TEST2',
+                default_instrument: false,
+                method_type: 'bank',
+                method: 'bank',
+                iban: 'DEFDEF',
+                external_id: 'test@external-id.com',
+            },
+            {
+                bigpay_token: '56789',
+                provider: 'adyenv2',
+                iin: '11111111',
+                last_4: '4321',
+                expiry_month: '02',
+                expiry_year: '2020',
+                brand: 'test',
+                trusted_shipping_address: true,
+                default_instrument: true,
+                method: 'scheme',
+                method_type: 'card',
             },
         ],
     };

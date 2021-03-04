@@ -1,12 +1,6 @@
-
 import { CheckoutActionCreator, CheckoutStore, InternalCheckoutSelectors } from '../../../checkout';
-import {
-    InvalidArgumentError,
-    MissingDataError,
-    MissingDataErrorType,
-    NotInitializedError,
-    NotInitializedErrorType,
-} from '../../../common/error/errors';
+import { getBrowserInfo } from '../../../common/browser-info';
+import { InvalidArgumentError, MissingDataError, MissingDataErrorType, NotInitializedError, NotInitializedErrorType } from '../../../common/error/errors';
 import { bindDecorator as bind } from '../../../common/utility';
 import { OrderActionCreator, OrderRequestBody } from '../../../order';
 import { OrderFinalizationNotRequiredError } from '../../../order/errors';
@@ -14,9 +8,11 @@ import PaymentActionCreator from '../../payment-action-creator';
 import PaymentMethodActionCreator from '../../payment-method-action-creator';
 import { PaymentInitializeOptions, PaymentRequestOptions } from '../../payment-request-options';
 import PaymentStrategyActionCreator from '../../payment-strategy-action-creator';
+import { AdyenPaymentMethodType } from '../adyenv2';
 import PaymentStrategy from '../payment-strategy';
 
 import { GooglePaymentData, PaymentMethodData } from './googlepay';
+import GooglePayAdyenV2PaymentProcessor from './googlepay-adyenv2-payment-processor';
 import GooglePayPaymentInitializeOptions from './googlepay-initialize-options';
 import GooglePayPaymentProcessor from './googlepay-payment-processor';
 
@@ -32,7 +28,8 @@ export default class GooglePayPaymentStrategy implements PaymentStrategy {
         private _paymentStrategyActionCreator: PaymentStrategyActionCreator,
         private _paymentActionCreator: PaymentActionCreator,
         private _orderActionCreator: OrderActionCreator,
-        private _googlePayPaymentProcessor: GooglePayPaymentProcessor
+        private _googlePayPaymentProcessor: GooglePayPaymentProcessor,
+        private _googlePayAdyenV2PaymentProcessor?: GooglePayAdyenV2PaymentProcessor
     ) {}
 
     initialize(options: PaymentInitializeOptions): Promise<InternalCheckoutSelectors> {
@@ -98,6 +95,7 @@ export default class GooglePayPaymentStrategy implements PaymentStrategy {
             .then(() =>
                 this._store.dispatch(this._orderActionCreator.submitOrder({ useStoreCredit: payload.useStoreCredit }, options))
                     .then(() => this._store.dispatch(this._paymentActionCreator.submitPayment(this._getPayment())))
+                    .catch(error => this._googlePayAdyenV2PaymentProcessor?.processAdditionalAction(error) || Promise.reject(error))
             );
     }
 
@@ -105,22 +103,29 @@ export default class GooglePayPaymentStrategy implements PaymentStrategy {
         return Promise.reject(new OrderFinalizationNotRequiredError());
     }
 
-    private _paymentInstrumentSelected(paymentData: GooglePaymentData) {
-        if (!this._methodId) {
-            throw new NotInitializedError(NotInitializedErrorType.PaymentNotInitialized);
+    private _getGooglePayOptions(options: PaymentInitializeOptions): GooglePayPaymentInitializeOptions {
+        if (options.methodId === 'googlepayadyenv2' && options.googlepayadyenv2) {
+            if (!this._googlePayAdyenV2PaymentProcessor) {
+                throw new NotInitializedError(NotInitializedErrorType.PaymentNotInitialized);
+            }
+
+            this._googlePayAdyenV2PaymentProcessor.initialize(options);
+
+            return options.googlepayadyenv2;
         }
 
-        const methodId = this._methodId;
+        if (options.methodId === 'googlepayauthorizenet' && options.googlepayauthorizenet) {
+            return options.googlepayauthorizenet;
+        }
 
-        // TODO: Revisit how we deal with GooglePaymentData after receiving it from Google
-        return this._googlePayPaymentProcessor.handleSuccess(paymentData)
-            .then(() => Promise.all([
-                this._store.dispatch(this._checkoutActionCreator.loadCurrentCheckout()),
-                this._store.dispatch(this._paymentMethodActionCreator.loadPaymentMethod(methodId)),
-            ]));
-    }
+        if (options.methodId === 'googlepaycheckoutcom' && options.googlepaycheckoutcom) {
+            return options.googlepaycheckoutcom;
+        }
 
-    private _getGooglePayOptions(options: PaymentInitializeOptions): GooglePayPaymentInitializeOptions {
+        if (options.methodId === 'googlepaycybersourcev2' && options.googlepaycybersourcev2) {
+            return options.googlepaycybersourcev2;
+        }
+
         if (options.methodId === 'googlepaybraintree' && options.googlepaybraintree) {
             return options.googlepaybraintree;
         }
@@ -148,9 +153,21 @@ export default class GooglePayPaymentStrategy implements PaymentStrategy {
             throw new MissingDataError(MissingDataErrorType.MissingPayment);
         }
 
+        let nonce;
+
+        if (this._methodId === 'googlepayadyenv2') {
+            nonce = JSON.stringify({
+                type: AdyenPaymentMethodType.GooglePay,
+                googlePayToken: paymentMethod.initializationData.nonce,
+                browser_info: getBrowserInfo(),
+            });
+        } else {
+            nonce = paymentMethod.initializationData.nonce;
+        }
+
         const paymentData = {
             method: this._methodId,
-            nonce: paymentMethod.initializationData.nonce,
+            nonce,
             cardInformation: paymentMethod.initializationData.card_information,
         };
 
@@ -168,8 +185,6 @@ export default class GooglePayPaymentStrategy implements PaymentStrategy {
             throw new NotInitializedError(NotInitializedErrorType.PaymentNotInitialized);
         }
 
-        const methodId = this._methodId;
-
         const {
             onError = () => {},
             onPaymentSelect = () => {},
@@ -184,6 +199,22 @@ export default class GooglePayPaymentStrategy implements PaymentStrategy {
                         onError(error);
                     }
                 });
-        }, { methodId }), { queueId: 'widgetInteraction' });
+        }, { methodId: this._methodId }), { queueId: 'widgetInteraction' });
+    }
+
+    private async _paymentInstrumentSelected(paymentData: GooglePaymentData) {
+        if (!this._methodId) {
+            throw new NotInitializedError(NotInitializedErrorType.PaymentNotInitialized);
+        }
+
+        const methodId = this._methodId;
+
+        // TODO: Revisit how we deal with GooglePaymentData after receiving it from Google
+        await this._googlePayPaymentProcessor.handleSuccess(paymentData);
+
+        return await Promise.all([
+            this._store.dispatch(this._checkoutActionCreator.loadCurrentCheckout()),
+            this._store.dispatch(this._paymentMethodActionCreator.loadPaymentMethod(methodId)),
+        ]);
     }
 }

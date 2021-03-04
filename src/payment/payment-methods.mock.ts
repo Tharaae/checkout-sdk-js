@@ -82,6 +82,55 @@ export function getPaypalExpress(): PaymentMethod {
     };
 }
 
+export function getPaypalCommerce(): PaymentMethod {
+    return {
+        id: 'paypalcommerce',
+        logoUrl: '',
+        method: 'paypal',
+        supportedCards: [],
+        config: {
+            testMode: true,
+            merchantId: 'JTS4DY7XFSQZE',
+        },
+        initializationData: {
+            buttonStyle: {
+                height: 55,
+                color: 'black',
+                label: 'pay',
+            },
+            clientId: 'abc',
+            orderId: '3U4171152W1482642',
+            intent: 'capture',
+            isPayPalCreditAvailable: false,
+        },
+        type: 'PAYMENT_TYPE_API',
+    };
+}
+
+export function getPaypalCommerceTestModeOn(): PaymentMethod {
+    return {
+      ...getPaypalCommerce(),
+        initializationData: {
+          ...getPaypalCommerce().initializationData,
+            isDeveloperModeApplicable: true,
+            buyerCountry: 'IT',
+
+        },
+    };
+}
+
+export function getPaypalCommerceTestModeOff(): PaymentMethod {
+    return {
+        ...getPaypalCommerce(),
+        initializationData: {
+            ...getPaypalCommerce().initializationData,
+            isDeveloperModeApplicable: false,
+            buyerCountry: 'IT',
+
+        },
+    };
+}
+
 export function getPaypal(): PaymentMethod {
     return {
         id: 'paypal',
@@ -126,6 +175,21 @@ export function getAuthorizenet(): PaymentMethod {
     };
 }
 
+export function getBlueSnapV2(): PaymentMethod {
+    return {
+        id: 'cc',
+        gateway: 'bluesnapv2',
+        logoUrl: '',
+        method: 'multi-option',
+        supportedCards: [],
+        config: {
+            displayName: 'Credit Card',
+            testMode: false,
+        },
+        type: 'PAYMENT_TYPE_HOSTED',
+    };
+}
+
 export function getCybersource(): PaymentMethod {
     return {
         id: 'cybersource',
@@ -139,6 +203,22 @@ export function getCybersource(): PaymentMethod {
         },
         type: 'PAYMENT_TYPE_API',
         clientToken: 'cyberToken',
+    };
+}
+
+export function getBarclays(): PaymentMethod {
+    return {
+        id: 'barclays',
+        logoUrl: '',
+        method: 'credit-card',
+        supportedCards: [],
+        config: {
+            displayName: 'Barclaycard Smartpay',
+            is3dsEnabled: true,
+            testMode: true,
+        },
+        type: 'PAYMENT_TYPE_API',
+        clientToken: 'barclaysToken',
     };
 }
 
@@ -201,6 +281,36 @@ export function getAffirm(): PaymentMethod {
         },
         type: 'PAYMENT_TYPE_API',
         clientToken: 'foo',
+    };
+}
+
+export function getAmazonPayV2(region = 'us'): PaymentMethod {
+    return {
+        config: {
+            displayName: 'AMAZON PAY',
+            helpText: '',
+            isVaultingEnabled: false,
+            merchantId: 'checkout_amazonpay',
+            requireCustomerCode: false,
+            testMode: true,
+        },
+        id: 'amazonpay',
+        initializationData: {
+            buttonColor: 'Gold',
+            checkoutLanguage: 'en_US',
+            checkoutSessionMethod: 'GET',
+            extractAmazonCheckoutSessionId: 'token',
+            ledgerCurrency: 'USD',
+            region,
+        },
+        logoUrl: '',
+        method: 'credit-card',
+        supportedCards: [
+            'VISA' ,
+            'AMEX',
+            'MC',
+        ],
+        type: 'PAYMENT_TYPE_API',
     };
 }
 
@@ -370,6 +480,64 @@ export function getGooglePay(): PaymentMethod {
     };
 }
 
+export function getGooglePayAdyenV2(): PaymentMethod {
+    return {
+        id: 'googlepayadyenv2',
+        logoUrl: '',
+        method: 'googlepay',
+        supportedCards: [
+            'VISA',
+            'MC',
+            'AMEX',
+        ],
+        config: {
+            displayName: 'Google Pay',
+            merchantId: '',
+            testMode: true,
+        },
+        type: 'PAYMENT_TYPE_API',
+        clientToken: 'clientToken',
+        initializationData: {
+            originKey: 'YOUR_ORIGIN_KEY',
+            clientKey: 'YOUR_CLIENT_KEY',
+            nonce: 'nonce',
+            card_information: {
+                type: 'MasterCard',
+                number: '4111',
+            },
+        },
+    };
+}
+
+export function getGooglePayCybersourceV2(): PaymentMethod {
+    return {
+        id: 'googlepaycybersourcev2',
+        logoUrl: '',
+        method: 'googlepay',
+        supportedCards: [
+            'VISA',
+            'MC',
+            'AMEX',
+        ],
+        config: {
+            displayName: 'Google Pay',
+            merchantId: '',
+            testMode: true,
+        },
+        type: 'PAYMENT_TYPE_API',
+        clientToken: 'clientToken',
+        initializationData: {
+            originKey: 'YOUR_ORIGIN_KEY',
+            clientKey: 'YOUR_CLIENT_KEY',
+            nonce: 'nonce',
+            card_information: {
+                type: 'MasterCard',
+                number: '4111',
+            },
+        },
+    };
+}
+
 export function getZip(): PaymentMethod {
     return {
         id: 'zip',
@@ -385,11 +553,11 @@ export function getZip(): PaymentMethod {
     };
 }
 
-export function getStripeV3(): PaymentMethod {
+export function getStripeV3(method: string = 'card', shouldUseIndividualCardFields: boolean = false): PaymentMethod {
     return {
-        id: 'stripev3',
+        id: method,
         logoUrl: '',
-        method: 'stripev3',
+        method,
         supportedCards: [],
         config: {
             displayName: 'Stripe',
@@ -398,17 +566,19 @@ export function getStripeV3(): PaymentMethod {
         },
         initializationData: {
             stripePublishableKey: 'key',
+            useIndividualCardFields: shouldUseIndividualCardFields,
         },
         type: 'PAYMENT_TYPE_API',
         clientToken: 'clientToken',
+        returnUrl: 'http://www.example.com',
     };
 }
 
-export function getAdyenV2(): PaymentMethod {
+export function getAdyenV2(method: string = 'scheme'): PaymentMethod {
     return {
         id: 'adyenv2',
         logoUrl: '',
-        method: 'adyenv2',
+        method,
         supportedCards: [],
         config: {
             displayName: 'Adyen',
@@ -417,14 +587,82 @@ export function getAdyenV2(): PaymentMethod {
         },
         initializationData: {
             originKey: 'YOUR_ORIGIN_KEY',
+            clientKey: 'YOUR_CLIENT_KEY',
         },
         type: 'PAYMENT_TYPE_API',
         clientToken: 'clientToken',
     };
 }
 
+export function getBolt(): PaymentMethod {
+    return {
+        id: 'bolt',
+        logoUrl: '',
+        method: 'bolt',
+        supportedCards: [],
+        config: {
+            displayName: 'Bolt',
+            testMode: true,
+        },
+        type: 'PAYMENT_TYPE_API',
+        initializationData: {
+            publishableKey: 'publishableKey',
+        },
+        clientToken: 'clientToken',
+    };
+}
+
 export function getPaymentMethod(): PaymentMethod {
     return getAuthorizenet();
+}
+
+export function getCheckoutcom(): PaymentMethod {
+    return {
+        id: 'checkoutcom',
+        logoUrl: '',
+        method: 'checkoutcom',
+        supportedCards: [],
+        config: {
+            displayName: 'Checkout.com',
+            merchantId: '',
+            testMode: true,
+        },
+        initializationData: {
+            checkoutcomkey: 'key',
+        },
+        type: 'PAYMENT_TYPE_API',
+        clientToken: 'clientToken',
+    };
+}
+
+export function getMollie(): PaymentMethod {
+    return {
+        id: 'mollie',
+        gateway: '',
+        logoUrl: 'https://charlsieremade-cloud-dev-vm.store.bcdev/rHEAD/modules/checkout/mollie/images/mollie.png',
+        method: 'multi-options',
+        supportedCards: [
+            'VISA',
+            'AMEX',
+            'MC',
+            'MAESTRO',
+        ],
+        config: {
+            displayName: 'Mollie',
+            hasDefaultStoredInstrument: false,
+            helpText: '',
+            is3dsEnabled: false,
+            isHostedFormEnabled: true,
+            isVaultingCvvEnabled: false,
+            isVaultingEnabled: false,
+            isVisaCheckoutEnabled: false,
+            merchantId: 'test_T0k3n',
+            requireCustomerCode: false,
+            testMode: true,
+        },
+        initializationData: null,
+        type: 'PAYMENT_TYPE_API',
+    };
 }
 
 export function getPaymentMethods(): PaymentMethod[] {
@@ -434,14 +672,21 @@ export function getPaymentMethods(): PaymentMethod[] {
         getAffirm(),
         getAfterpay(),
         getAmazonPay(),
+        getAmazonPayV2(),
         getAuthorizenet(),
+        getBlueSnapV2(),
         getBraintree(),
         getBraintreePaypal(),
         getBraintreePaypalCredit(),
         getBraintreeVisaCheckout(),
+        getCheckoutcom(),
         getGooglePay(),
+        getGooglePayAdyenV2(),
+        getGooglePayCybersourceV2(),
         getKlarna(),
+        getMollie(),
         getPaypalExpress(),
+        getPaypalCommerce(),
         getSquare(),
         getStripeV3(),
     ];

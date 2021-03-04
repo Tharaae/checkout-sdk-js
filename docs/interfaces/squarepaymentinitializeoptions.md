@@ -1,14 +1,83 @@
-[@bigcommerce/checkout-sdk](../README.md) > [SquarePaymentInitializeOptions](../interfaces/squarepaymentinitializeoptions.md)
+[@bigcommerce/checkout-sdk](../README.md) › [SquarePaymentInitializeOptions](squarepaymentinitializeoptions.md)
 
-# SquarePaymentInitializeOptions
+# Interface: SquarePaymentInitializeOptions
 
 A set of options that are required to initialize the Square payment method.
 
-Once Square payment is initialized, credit card form fields, provided by the payment provider as iframes, will be inserted into the current page. These options provide a location and styling for each of the form fields.
+Once Square payment is initialized, credit card form fields, provided by the
+payment provider as iframes, will be inserted into the current page. These
+options provide a location and styling for each of the form fields.
+
+```html
+<!-- These containers are where the hosted (iframed) credit card fields will be inserted -->
+<div id="card-number"></div>
+<div id="card-name"></div>
+<div id="card-expiry"></div>
+<div id="card-code"></div>
+```
+
+```js
+service.initializePayment({
+    methodId: 'squarev2',
+    square: {
+        cardNumber: {
+            elementId: 'card-number',
+        },
+        cvv: {
+            elementId: 'card-code',
+        },
+        expirationDate: {
+            elementId: 'card-expiry',
+        },
+        postalCode: {
+            elementId: 'card-code',
+        },
+    },
+});
+```
+
+Additional options can be passed in to enable Masterpass (if configured for
+the account) and customize the fields.
+
+```html
+<!-- This container is where Masterpass button will be inserted -->
+<div id="masterpass"></div>
+```
+
+```js
+service.initializePayment({
+    methodId: 'squarev2',
+    square: {
+        cardNumber: {
+            elementId: 'card-number',
+        },
+        cvv: {
+            elementId: 'card-code',
+        },
+        expirationDate: {
+            elementId: 'card-expiry',
+        },
+        postalCode: {
+            elementId: 'card-code',
+        },
+        inputClass: 'form-input',
+        inputStyles: [
+            {
+                color: '#333',
+                fontSize: '13px',
+                lineHeight: '20px',
+            },
+        ],
+        masterpass: {
+            elementId: 'masterpass',
+        },
+    },
+});
+```
 
 ## Hierarchy
 
-**SquarePaymentInitializeOptions**
+* **SquarePaymentInitializeOptions**
 
 ## Index
 
@@ -17,113 +86,94 @@ Once Square payment is initialized, credit card form fields, provided by the pay
 * [cardNumber](squarepaymentinitializeoptions.md#cardnumber)
 * [cvv](squarepaymentinitializeoptions.md#cvv)
 * [expirationDate](squarepaymentinitializeoptions.md#expirationdate)
-* [inputClass](squarepaymentinitializeoptions.md#inputclass)
-* [inputStyles](squarepaymentinitializeoptions.md#inputstyles)
-* [masterpass](squarepaymentinitializeoptions.md#masterpass)
+* [inputClass](squarepaymentinitializeoptions.md#optional-inputclass)
+* [inputStyles](squarepaymentinitializeoptions.md#optional-inputstyles)
+* [masterpass](squarepaymentinitializeoptions.md#optional-masterpass)
 * [postalCode](squarepaymentinitializeoptions.md#postalcode)
 
 ### Methods
 
-* [onError](squarepaymentinitializeoptions.md#onerror)
-* [onPaymentSelect](squarepaymentinitializeoptions.md#onpaymentselect)
-
----
+* [onError](squarepaymentinitializeoptions.md#optional-onerror)
+* [onPaymentSelect](squarepaymentinitializeoptions.md#optional-onpaymentselect)
 
 ## Properties
 
-<a id="cardnumber"></a>
-
 ###  cardNumber
 
-**● cardNumber**: *[SquareFormElement](squareformelement.md)*
+• **cardNumber**: *[SquareFormElement](squareformelement.md)*
 
 The location to insert the credit card number form field.
 
 ___
-<a id="cvv"></a>
 
 ###  cvv
 
-**● cvv**: *[SquareFormElement](squareformelement.md)*
+• **cvv**: *[SquareFormElement](squareformelement.md)*
 
 The location to insert the CVV form field.
 
 ___
-<a id="expirationdate"></a>
 
 ###  expirationDate
 
-**● expirationDate**: *[SquareFormElement](squareformelement.md)*
+• **expirationDate**: *[SquareFormElement](squareformelement.md)*
 
 The location to insert the expiration date form field.
 
 ___
-<a id="inputclass"></a>
 
-### `<Optional>` inputClass
+### `Optional` inputClass
 
-**● inputClass**: * `undefined` &#124; `string`
-*
+• **inputClass**? : *undefined | string*
 
 The CSS class to apply to all form fields.
 
 ___
-<a id="inputstyles"></a>
 
-### `<Optional>` inputStyles
+### `Optional` inputStyles
 
-**● inputStyles**: *`Array`<`object`>*
+• **inputStyles**? : *Array‹object›*
 
 The set of CSS styles to apply to all form fields.
 
 ___
-<a id="masterpass"></a>
 
-### `<Optional>` masterpass
+### `Optional` masterpass
 
-**● masterpass**: *[SquareFormElement](squareformelement.md)*
+• **masterpass**? : *[SquareFormElement](squareformelement.md)*
 
 Initialize Masterpass placeholder ID
 
 ___
-<a id="postalcode"></a>
 
 ###  postalCode
 
-**● postalCode**: *[SquareFormElement](squareformelement.md)*
+• **postalCode**: *[SquareFormElement](squareformelement.md)*
 
 The location to insert the postal code form field.
 
-___
-
 ## Methods
 
-<a id="onerror"></a>
+### `Optional` onError
 
-### `<Optional>` onError
-
-▸ **onError**(errors?: *[NonceGenerationError](noncegenerationerror.md)[]*): `void`
+▸ **onError**(`errors?`: [NonceGenerationError](noncegenerationerror.md)[]): *void*
 
 A callback that gets called when an error occurs in the card nonce generation
 
 **Parameters:**
 
-| Param | Type |
-| ------ | ------ |
-| `Optional` errors | [NonceGenerationError](noncegenerationerror.md)[] |
+Name | Type |
+------ | ------ |
+`errors?` | [NonceGenerationError](noncegenerationerror.md)[] |
 
-**Returns:** `void`
+**Returns:** *void*
 
 ___
-<a id="onpaymentselect"></a>
 
-### `<Optional>` onPaymentSelect
+### `Optional` onPaymentSelect
 
-▸ **onPaymentSelect**(): `void`
+▸ **onPaymentSelect**(): *void*
 
 A callback that gets called when the customer selects a payment option.
 
-**Returns:** `void`
-
-___
-
+**Returns:** *void*

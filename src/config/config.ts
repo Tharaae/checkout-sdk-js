@@ -1,4 +1,4 @@
-import { FormField } from '../form';
+import { FormFields } from '../form';
 
 export default interface Config {
     context: ContextConfig;
@@ -10,7 +10,21 @@ export interface StoreConfig {
     cdnPath: string;
     checkoutSettings: CheckoutSettings;
     currency: StoreCurrency;
+    displayDateFormat: string;
+    inputDateFormat: string;
+
+    /**
+     * @deprecated Please use instead the data selectors
+     * @remarks
+     * ```js
+     * const data = CheckoutService.getState().data;
+     * const shippingAddressFields = data.getShippingAddressFields('US');
+     * const billingAddressFields = data.getBillingAddressFields('US');
+     * const customerAccountFields = data.getCustomerAccountFields();
+     * ```
+     */
     formFields: FormFields;
+
     links: StoreLinks;
     paymentSettings: PaymentSettings;
     shopperConfig: ShopperConfig;
@@ -64,11 +78,6 @@ export interface StoreLinks {
     orderConfirmationLink: string;
 }
 
-export interface FormFields {
-    shippingAddressFields: FormField[];
-    billingAddressFields: FormField[];
-}
-
 export interface StoreCurrency {
     code: string;
     decimalPlaces: string;
@@ -84,11 +93,14 @@ export interface CheckoutSettings {
     enableTermsAndConditions: boolean;
     googleMapsApiKey: string;
     googleRecaptchaSitekey: string;
+    isAccountCreationEnabled: boolean;
+    isStorefrontSpamProtectionEnabled: boolean;
     guestCheckoutEnabled: boolean;
     hasMultiShippingEnabled: boolean;
     isAnalyticsEnabled: boolean;
     isCardVaultingEnabled: boolean;
     isCouponCodeCollapsed: boolean;
+    isSignInEmailEnabled: boolean;
     isPaymentRequestEnabled: boolean;
     isPaymentRequestCanMakePaymentEnabled: boolean;
     isSpamProtectionEnabled: boolean;
@@ -96,8 +108,10 @@ export interface CheckoutSettings {
     orderTermsAndConditions: string;
     orderTermsAndConditionsLink: string;
     orderTermsAndConditionsType: string;
+    privacyPolicyUrl: string;
     shippingQuoteFailedMessage: string;
     realtimeShippingProviders: string[];
+    requiresMarketingConsent: boolean;
     remoteCheckoutProviders: any[];
 }
 
@@ -105,11 +119,20 @@ export interface CustomizationConfig {
     languageData: any[];
 }
 
+export type FlashMessageType = 'error' | 'info' | 'warning' | 'success';
+
+export interface FlashMessage {
+    type: FlashMessageType;
+    message: string;
+    title?: string;
+}
+
 export interface ContextConfig {
     checkoutId?: string;
     geoCountryCode: string;
-    flashMessages: any[];
+    flashMessages: FlashMessage[];
     payment: {
+        formId?: string;
         token?: string;
     };
 }

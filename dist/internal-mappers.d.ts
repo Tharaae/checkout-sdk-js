@@ -1,6 +1,7 @@
 
 declare interface Address extends AddressRequestBody {
     country: string;
+    shouldSaveAddress?: boolean;
 }
 
 declare interface AddressRequestBody {
@@ -76,14 +77,24 @@ declare interface Checkout {
     consignments: Consignment[];
     taxes: Tax[];
     discounts: Discount[];
+    isStoreCreditApplied: boolean;
     coupons: Coupon[];
     orderId?: number;
+    giftWrappingCostTotal: number;
     shippingCostTotal: number;
     shippingCostBeforeDiscount: number;
+    /**
+     * Whether the current checkout must execute spam protection
+     * before placing the order.
+     *
+     * Note: You need to enable Google ReCAPTCHA bot protection in your Checkout Settings.
+     */
+    shouldExecuteSpamCheck: boolean;
     handlingCostTotal: number;
     taxTotal: number;
     subtotal: number;
     grandTotal: number;
+    outstandingBalance: number;
     giftCertificates: GiftCertificate[];
     promotions?: Promotion[];
     balanceDue: number;
@@ -139,16 +150,31 @@ declare interface Customer {
     id: number;
     addresses: CustomerAddress[];
     storeCredit: number;
+    /**
+     * The email address of the signed in customer.
+     */
     email: string;
     firstName: string;
     fullName: string;
     isGuest: boolean;
     lastName: string;
+    /**
+     * Indicates whether the customer should be prompted to sign-in.
+     *
+     * Note: You need to enable "Prompt existing accounts to sign in" in your Checkout Settings.
+     */
+    shouldEncourageSignIn: boolean;
+    customerGroup?: CustomerGroup;
 }
 
 declare interface CustomerAddress extends Address {
     id: number;
     type: string;
+}
+
+declare interface CustomerGroup {
+    id: number;
+    name: string;
 }
 
 declare interface DigitalItem extends LineItem {
@@ -208,8 +234,8 @@ declare interface GiftCertificateOrderPayment extends OrderPayment {
     };
 }
 
-declare interface InternalAddress {
-    id?: string | number;
+declare interface InternalAddress<T = string> {
+    id?: T;
     firstName: string;
     lastName: string;
     company: string;
@@ -291,7 +317,7 @@ declare interface InternalCoupon {
 }
 
 declare interface InternalCustomer {
-    addresses: InternalAddress[];
+    addresses: Array<InternalAddress<number>>;
     customerId: number;
     isGuest: boolean;
     storeCredit: number;
@@ -344,11 +370,14 @@ declare interface InternalLineItem {
     downloadsPageUrl?: string;
     integerAmountAfterDiscount: number;
     integerDiscount: number;
+    integerUnitPrice: number;
+    integerUnitPriceAfterDiscount: number;
     id: string | number;
     imageUrl: string;
     name?: string;
     quantity: number;
     brand?: string;
+    sku?: string;
     categoryNames?: string[];
     type: string;
     variantId: number | null;
@@ -492,8 +521,10 @@ declare interface LineItem {
     couponAmount: number;
     listPrice: number;
     salePrice: number;
+    comparisonPrice: number;
     extendedListPrice: number;
     extendedSalePrice: number;
+    extendedComparisonPrice: number;
     socialMedia?: LineItemSocialData[];
     options?: LineItemOption[];
     addedByPromotion: boolean;
@@ -515,7 +546,7 @@ declare interface LineItemOption {
     name: string;
     nameId: number;
     value: string;
-    valueId: number;
+    valueId: number | null;
 }
 
 declare interface LineItemSocialData {
@@ -535,6 +566,7 @@ declare interface Order {
     customerId: number;
     customerMessage: string;
     discountAmount: number;
+    handlingCostTotal: number;
     hasDigitalItems: boolean;
     isComplete: boolean;
     isDownloadable: boolean;
@@ -543,13 +575,14 @@ declare interface Order {
     orderAmount: number;
     orderAmountAsInteger: number;
     orderId: number;
+    payments?: OrderPayments;
+    giftWrappingCostTotal: number;
     shippingCostTotal: number;
     shippingCostBeforeDiscount: number;
-    handlingCostTotal: number;
+    status: string;
     taxes: Tax[];
     taxTotal: number;
-    payments?: OrderPayments;
-    status: string;
+    mandateUrl?: string;
 }
 
 declare interface OrderMetaState extends InternalOrderMeta {
@@ -557,7 +590,6 @@ declare interface OrderMetaState extends InternalOrderMeta {
     orderToken?: string;
     callbackUrl?: string;
     payment?: InternalOrderPayment;
-    spamProtectionToken?: string;
 }
 
 declare interface OrderPayment {
@@ -583,6 +615,7 @@ declare interface Promotion {
 }
 
 declare interface ShippingOption {
+    additionalDescription: string;
     description: string;
     id: string;
     isRecommended: boolean;
@@ -602,7 +635,7 @@ declare interface Tax {
  * the transition period as we are moving to adopt the new storefront API object
  * schema.
  */
-export declare function mapToInternalAddress(address: Address | BillingAddress, consignments?: Consignment[]): InternalAddress;
+export declare function mapToInternalAddress(address: Address | BillingAddress, consignments?: Consignment[]): InternalAddress<any>;
 
 /**
  * @deprecated This mapper is only for internal use only. It is required during

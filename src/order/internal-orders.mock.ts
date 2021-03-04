@@ -25,7 +25,6 @@ export function getInternalOrderRequestBody(): InternalOrderRequestBody {
             gateway: payment.gatewayId,
             paymentData: payment.paymentData,
         },
-        spamProtectionToken: 'spamProtectionToken',
     };
 }
 
@@ -75,12 +74,15 @@ export function getCompleteOrder(): InternalOrder {
                 imageUrl: '/images/canvas-laundry-cart.jpg',
                 quantity: 1,
                 brand: 'OFS',
+                sku: 'CLC',
                 amount: 200,
-                discount: 0,
-                amountAfterDiscount: 200,
+                discount: 10,
+                amountAfterDiscount: 190,
                 integerAmount: 20000,
-                integerDiscount: 0,
-                integerAmountAfterDiscount: 20000,
+                integerDiscount: 1000,
+                integerAmountAfterDiscount: 19000,
+                integerUnitPrice: 20000,
+                integerUnitPriceAfterDiscount: 19000,
                 variantId: 71,
                 addedByPromotion: false,
                 attributes: [
@@ -113,6 +115,8 @@ export function getCompleteOrder(): InternalOrder {
                 integerAmount: 10000,
                 integerDiscount: 0,
                 integerAmountAfterDiscount: 10000,
+                integerUnitPrice: 10000,
+                integerUnitPriceAfterDiscount: 10000,
                 variantId: null,
             },
         ],
@@ -243,7 +247,7 @@ export function getCompleteOrderResponseBody(): InternalOrderResponseBody {
 
 export function getSubmitOrderResponseHeaders(): { token: string } {
     return {
-        token: 'JWT eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE1MDcxODcxMzMsIm5iZiI6MTUwNzE4MzUzMywiaXNzIjoicGF5bWVudHMuYmlnY29tbWVyY2UuY29tIiwic3ViIjoiMTUwNDA5ODgyMSIsImp0aSI6IjNkOTA4ZDE5LTY4OTMtNGQzYi1iMWEwLWJjNWYzMjRhM2ZiZCIsImlhdCI6MTUwNzE4MzUzMywiZGF0YSI6eyJzdG9yZV9pZCI6IjE1MDQwOTg4MjEiLCJvcmRlcl9pZCI6IjExOSIsImFtb3VudCI6MjAwMDAsImN1cnJlbmN5IjoiVVNEIn19.FSfZpI98l3_p5rbQdlHNeCfKR5Dwwk8_fvPZvtb64-Q',
+        token: 'JWT eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c',
     };
 }
 

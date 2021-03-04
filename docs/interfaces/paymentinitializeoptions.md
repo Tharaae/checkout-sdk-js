@@ -1,176 +1,302 @@
-[@bigcommerce/checkout-sdk](../README.md) > [PaymentInitializeOptions](../interfaces/paymentinitializeoptions.md)
+[@bigcommerce/checkout-sdk](../README.md) › [PaymentInitializeOptions](paymentinitializeoptions.md)
 
-# PaymentInitializeOptions
+# Interface: PaymentInitializeOptions ‹**TParams**›
 
-A set of options that are required to initialize the payment step of the current checkout flow.
+A set of options that are required to initialize the payment step of the
+current checkout flow.
 
 ## Type parameters
 
-#### TParams 
+▪ **TParams**
+
 ## Hierarchy
 
-↳  [PaymentRequestOptions](paymentrequestoptions.md)
+  ↳ [PaymentRequestOptions](paymentrequestoptions.md)
 
-**↳ PaymentInitializeOptions**
+  ↳ **PaymentInitializeOptions**
 
 ## Index
 
 ### Properties
 
-* [amazon](paymentinitializeoptions.md#amazon)
-* [braintree](paymentinitializeoptions.md#braintree)
-* [braintreevisacheckout](paymentinitializeoptions.md#braintreevisacheckout)
-* [chasepay](paymentinitializeoptions.md#chasepay)
-* [gatewayId](paymentinitializeoptions.md#gatewayid)
-* [googlepaybraintree](paymentinitializeoptions.md#googlepaybraintree)
-* [googlepaystripe](paymentinitializeoptions.md#googlepaystripe)
-* [klarna](paymentinitializeoptions.md#klarna)
-* [masterpass](paymentinitializeoptions.md#masterpass)
+* [adyenv2](paymentinitializeoptions.md#optional-adyenv2)
+* [amazon](paymentinitializeoptions.md#optional-amazon)
+* [amazonpay](paymentinitializeoptions.md#optional-amazonpay)
+* [bluesnapv2](paymentinitializeoptions.md#optional-bluesnapv2)
+* [bolt](paymentinitializeoptions.md#optional-bolt)
+* [braintree](paymentinitializeoptions.md#optional-braintree)
+* [braintreevisacheckout](paymentinitializeoptions.md#optional-braintreevisacheckout)
+* [chasepay](paymentinitializeoptions.md#optional-chasepay)
+* [creditCard](paymentinitializeoptions.md#optional-creditcard)
+* [gatewayId](paymentinitializeoptions.md#optional-gatewayid)
+* [googlepayadyenv2](paymentinitializeoptions.md#optional-googlepayadyenv2)
+* [googlepayauthorizenet](paymentinitializeoptions.md#optional-googlepayauthorizenet)
+* [googlepaybraintree](paymentinitializeoptions.md#optional-googlepaybraintree)
+* [googlepaycheckoutcom](paymentinitializeoptions.md#optional-googlepaycheckoutcom)
+* [googlepaycybersourcev2](paymentinitializeoptions.md#optional-googlepaycybersourcev2)
+* [googlepaystripe](paymentinitializeoptions.md#optional-googlepaystripe)
+* [klarna](paymentinitializeoptions.md#optional-klarna)
+* [klarnav2](paymentinitializeoptions.md#optional-klarnav2)
+* [masterpass](paymentinitializeoptions.md#optional-masterpass)
 * [methodId](paymentinitializeoptions.md#methodid)
-* [params](paymentinitializeoptions.md#params)
-* [paypalexpress](paymentinitializeoptions.md#paypalexpress)
-* [square](paymentinitializeoptions.md#square)
-* [stripev3](paymentinitializeoptions.md#stripev3)
-* [timeout](paymentinitializeoptions.md#timeout)
-
----
+* [mollie](paymentinitializeoptions.md#optional-mollie)
+* [params](paymentinitializeoptions.md#optional-params)
+* [paypalcommerce](paymentinitializeoptions.md#optional-paypalcommerce)
+* [paypalexpress](paymentinitializeoptions.md#optional-paypalexpress)
+* [square](paymentinitializeoptions.md#optional-square)
+* [stripev3](paymentinitializeoptions.md#optional-stripev3)
+* [timeout](paymentinitializeoptions.md#optional-timeout)
 
 ## Properties
 
-<a id="amazon"></a>
+### `Optional` adyenv2
 
-### `<Optional>` amazon
+• **adyenv2**? : *[AdyenV2PaymentInitializeOptions](adyenv2paymentinitializeoptions.md)*
 
-**● amazon**: *[AmazonPayPaymentInitializeOptions](amazonpaypaymentinitializeoptions.md)*
-
-The options that are required to initialize the Amazon Pay payment method. They can be omitted unless you need to support AmazonPay.
-
-___
-<a id="braintree"></a>
-
-### `<Optional>` braintree
-
-**● braintree**: *[BraintreePaymentInitializeOptions](braintreepaymentinitializeoptions.md)*
-
-The options that are required to initialize the Braintree payment method. They can be omitted unless you need to support Braintree.
+The options that are required to initialize the AdyenV2 payment
+method. They can be omitted unless you need to support AdyenV2.
 
 ___
-<a id="braintreevisacheckout"></a>
 
-### `<Optional>` braintreevisacheckout
+### `Optional` amazon
 
-**● braintreevisacheckout**: *[BraintreeVisaCheckoutPaymentInitializeOptions](braintreevisacheckoutpaymentinitializeoptions.md)*
+• **amazon**? : *[AmazonPayPaymentInitializeOptions](amazonpaypaymentinitializeoptions.md)*
 
-The options that are required to initialize the Visa Checkout payment method provided by Braintree. They can be omitted unless you need to support Visa Checkout.
-
-___
-<a id="chasepay"></a>
-
-### `<Optional>` chasepay
-
-**● chasepay**: *[ChasePayInitializeOptions](chasepayinitializeoptions.md)*
-
-The options that are required to initialize the Chasepay payment method. They can be omitted unless you need to support Chasepay.
+The options that are required to initialize the Amazon Pay payment
+method. They can be omitted unless you need to support AmazonPay.
 
 ___
-<a id="gatewayid"></a>
 
-### `<Optional>` gatewayId
+### `Optional` amazonpay
 
-**● gatewayId**: * `undefined` &#124; `string`
-*
+• **amazonpay**? : *[AmazonPayV2PaymentInitializeOptions](amazonpayv2paymentinitializeoptions.md)*
 
-The identifier of the payment provider providing the payment method. This option is only required if the provider offers multiple payment options. i.e.: Adyen and Klarna.
-
-___
-<a id="googlepaybraintree"></a>
-
-### `<Optional>` googlepaybraintree
-
-**● googlepaybraintree**: *[GooglePayPaymentInitializeOptions](googlepaypaymentinitializeoptions.md)*
-
-The options that are required to initialize the GooglePay Braintree payment method. They can be omitted unless you need to support GooglePay.
+The options that are required to initialize the AmazonPayV2 payment
+method. They can be omitted unless you need to support AmazonPayV2.
 
 ___
-<a id="googlepaystripe"></a>
 
-### `<Optional>` googlepaystripe
+### `Optional` bluesnapv2
 
-**● googlepaystripe**: *[GooglePayPaymentInitializeOptions](googlepaypaymentinitializeoptions.md)*
+• **bluesnapv2**? : *[BlueSnapV2PaymentInitializeOptions](bluesnapv2paymentinitializeoptions.md)*
 
-The options that are required to initialize the GooglePay Stripe payment method. They can be omitted unless you need to support GooglePay.
-
-___
-<a id="klarna"></a>
-
-### `<Optional>` klarna
-
-**● klarna**: *[KlarnaPaymentInitializeOptions](klarnapaymentinitializeoptions.md)*
-
-The options that are required to initialize the Klarna payment method. They can be omitted unless you need to support Klarna.
+The options that are required to initialize the BlueSnapV2 payment method.
+They can be omitted unless you need to support BlueSnapV2.
 
 ___
-<a id="masterpass"></a>
 
-### `<Optional>` masterpass
+### `Optional` bolt
 
-**● masterpass**: *[MasterpassPaymentInitializeOptions](masterpasspaymentinitializeoptions.md)*
+• **bolt**? : *[BoltPaymentInitializeOptions](boltpaymentinitializeoptions.md)*
 
-The options that are required to initialize the Masterpass payment method. They can be omitted unless you need to support Masterpass.
+The options that allow Bolt to load the client script and handle the checkout.
+They can be omitted if Bolt's full checkout take over is intended.
 
 ___
-<a id="methodid"></a>
+
+### `Optional` braintree
+
+• **braintree**? : *[BraintreePaymentInitializeOptions](braintreepaymentinitializeoptions.md)*
+
+The options that are required to initialize the Braintree payment method.
+They can be omitted unless you need to support Braintree.
+
+___
+
+### `Optional` braintreevisacheckout
+
+• **braintreevisacheckout**? : *[BraintreeVisaCheckoutPaymentInitializeOptions](braintreevisacheckoutpaymentinitializeoptions.md)*
+
+The options that are required to initialize the Visa Checkout payment
+method provided by Braintree. They can be omitted unless you need to
+support Visa Checkout.
+
+___
+
+### `Optional` chasepay
+
+• **chasepay**? : *[ChasePayInitializeOptions](chasepayinitializeoptions.md)*
+
+The options that are required to initialize the Chasepay payment method.
+They can be omitted unless you need to support Chasepay.
+
+___
+
+### `Optional` creditCard
+
+• **creditCard**? : *[CreditCardPaymentInitializeOptions](creditcardpaymentinitializeoptions.md)*
+
+**`alpha`** 
+Please note that this option is currently in an early stage of
+development. Therefore the API is unstable and not ready for public
+consumption.
+
+___
+
+### `Optional` gatewayId
+
+• **gatewayId**? : *undefined | string*
+
+*Inherited from [PaymentInitializeOptions](paymentinitializeoptions.md).[gatewayId](paymentinitializeoptions.md#optional-gatewayid)*
+
+The identifier of the payment provider providing the payment method. This
+option is only required if the provider offers multiple payment options.
+i.e.: Adyen and Klarna.
+
+___
+
+### `Optional` googlepayadyenv2
+
+• **googlepayadyenv2**? : *[GooglePayPaymentInitializeOptions](googlepaypaymentinitializeoptions.md)*
+
+The options that are required to initialize the GooglePay Authorize.Net
+payment method. They can be omitted unless you need to support GooglePay.
+
+___
+
+### `Optional` googlepayauthorizenet
+
+• **googlepayauthorizenet**? : *[GooglePayPaymentInitializeOptions](googlepaypaymentinitializeoptions.md)*
+
+The options that are required to initialize the GooglePay Authorize.Net
+payment method. They can be omitted unless you need to support GooglePay.
+
+___
+
+### `Optional` googlepaybraintree
+
+• **googlepaybraintree**? : *[GooglePayPaymentInitializeOptions](googlepaypaymentinitializeoptions.md)*
+
+The options that are required to initialize the GooglePay Braintree payment method.
+They can be omitted unless you need to support GooglePay.
+
+___
+
+### `Optional` googlepaycheckoutcom
+
+• **googlepaycheckoutcom**? : *[GooglePayPaymentInitializeOptions](googlepaypaymentinitializeoptions.md)*
+
+The options that are required to initialize the GooglePay Checkout.com payment method.
+They can be omitted unless you need to support GooglePay.
+
+___
+
+### `Optional` googlepaycybersourcev2
+
+• **googlepaycybersourcev2**? : *[GooglePayPaymentInitializeOptions](googlepaypaymentinitializeoptions.md)*
+
+The options that are required to initialize the GooglePay CybersourceV2 payment method.
+They can be omitted unless you need to support GooglePay.
+
+___
+
+### `Optional` googlepaystripe
+
+• **googlepaystripe**? : *[GooglePayPaymentInitializeOptions](googlepaypaymentinitializeoptions.md)*
+
+The options that are required to initialize the GooglePay Stripe payment method.
+They can be omitted unless you need to support GooglePay.
+
+___
+
+### `Optional` klarna
+
+• **klarna**? : *[KlarnaPaymentInitializeOptions](klarnapaymentinitializeoptions.md)*
+
+The options that are required to initialize the Klarna payment method.
+They can be omitted unless you need to support Klarna.
+
+___
+
+### `Optional` klarnav2
+
+• **klarnav2**? : *[KlarnaV2PaymentInitializeOptions](klarnav2paymentinitializeoptions.md)*
+
+The options that are required to initialize the KlarnaV2 payment method.
+They can be omitted unless you need to support KlarnaV2.
+
+___
+
+### `Optional` masterpass
+
+• **masterpass**? : *[MasterpassPaymentInitializeOptions](masterpasspaymentinitializeoptions.md)*
+
+The options that are required to initialize the Masterpass payment method.
+They can be omitted unless you need to support Masterpass.
+
+___
 
 ###  methodId
 
-**● methodId**: *`string`*
+• **methodId**: *string*
+
+*Inherited from [PaymentInitializeOptions](paymentinitializeoptions.md).[methodId](paymentinitializeoptions.md#methodid)*
 
 The identifier of the payment method.
 
 ___
-<a id="params"></a>
 
-### `<Optional>` params
+### `Optional` mollie
 
-**● params**: *[TParams]()*
+• **mollie**? : *[MolliePaymentInitializeOptions](molliepaymentinitializeoptions.md)*
+
+The options that are required to initialize the Mollie payment method.
+They can be omitted unless you need to support Mollie.
+
+___
+
+### `Optional` params
+
+• **params**? : *TParams*
+
+*Inherited from [CheckoutButtonInitializeOptions](checkoutbuttoninitializeoptions.md).[params](checkoutbuttoninitializeoptions.md#optional-params)*
 
 The parameters of the request, if required.
 
 ___
-<a id="paypalexpress"></a>
 
-### `<Optional>` paypalexpress
+### `Optional` paypalcommerce
 
-**● paypalexpress**: *[PaypalExpressPaymentInitializeOptions](paypalexpresspaymentinitializeoptions.md)*
+• **paypalcommerce**? : *[PaypalCommerceInitializeOptions](../README.md#paypalcommerceinitializeoptions)*
 
-The options that are required to initialize the PayPal Express payment method. They can be omitted unless you need to support PayPal Express.
-
-___
-<a id="square"></a>
-
-### `<Optional>` square
-
-**● square**: *[SquarePaymentInitializeOptions](squarepaymentinitializeoptions.md)*
-
-The options that are required to initialize the Square payment method. They can be omitted unless you need to support Square.
-
-___
-<a id="stripev3"></a>
-
-### `<Optional>` stripev3
-
-**● stripev3**: *[StripeV3PaymentInitializeOptions](stripev3paymentinitializeoptions.md)*
-
-The options that are required to initialize the Stripe payment method. They can be omitted unless you need to support StripeV3.
-
-___
-<a id="timeout"></a>
-
-### `<Optional>` timeout
-
-**● timeout**: *`Timeout`*
-
-Provide this option if you want to cancel or time out the request. If the timeout object completes before the request, the request will be cancelled.
+The options that are required to initialize the PayPal Commerce payment method.
+They can be omitted unless you need to support PayPal Commerce.
 
 ___
 
+### `Optional` paypalexpress
+
+• **paypalexpress**? : *[PaypalExpressPaymentInitializeOptions](paypalexpresspaymentinitializeoptions.md)*
+
+The options that are required to initialize the PayPal Express payment method.
+They can be omitted unless you need to support PayPal Express.
+
+___
+
+### `Optional` square
+
+• **square**? : *[SquarePaymentInitializeOptions](squarepaymentinitializeoptions.md)*
+
+The options that are required to initialize the Square payment method.
+They can be omitted unless you need to support Square.
+
+___
+
+### `Optional` stripev3
+
+• **stripev3**? : *[StripeV3PaymentInitializeOptions](stripev3paymentinitializeoptions.md)*
+
+The options that are required to initialize the Stripe payment method.
+They can be omitted unless you need to support StripeV3.
+
+___
+
+### `Optional` timeout
+
+• **timeout**? : *Timeout*
+
+*Inherited from [CheckoutButtonInitializeOptions](checkoutbuttoninitializeoptions.md).[timeout](checkoutbuttoninitializeoptions.md#optional-timeout)*
+
+Provide this option if you want to cancel or time out the request. If the
+timeout object completes before the request, the request will be
+cancelled.

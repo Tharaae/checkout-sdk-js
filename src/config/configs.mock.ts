@@ -1,4 +1,4 @@
-import { getFormFields } from '../form/form.mocks';
+import { getFormFields } from '../form/form.mock';
 
 import Config from './config';
 import ConfigState from './config-state';
@@ -9,7 +9,9 @@ export function getConfig(): Config {
             checkoutId: '6a6071cc-82ba-45aa-adb0-ebec42d6ff6f',
             flashMessages: [],
             geoCountryCode: 'AU',
-            payment: {},
+            payment: {
+                formId: 'dc030783-6129-4ee3-8e06-6f4270df1527',
+            },
         },
         customization: {
             languageData: [],
@@ -24,8 +26,11 @@ export function getConfig(): Config {
                 hasMultiShippingEnabled: true,
                 googleMapsApiKey: '',
                 googleRecaptchaSitekey: 'sitekey',
+                isAccountCreationEnabled: true,
                 isAnalyticsEnabled: false,
                 isCardVaultingEnabled: true,
+                isStorefrontSpamProtectionEnabled: false,
+                isSignInEmailEnabled: false,
                 isPaymentRequestEnabled: false,
                 isPaymentRequestCanMakePaymentEnabled: false,
                 isCouponCodeCollapsed: true,
@@ -34,12 +39,14 @@ export function getConfig(): Config {
                 orderTermsAndConditions: '',
                 orderTermsAndConditionsLink: '',
                 orderTermsAndConditionsType: '',
+                privacyPolicyUrl: '',
                 shippingQuoteFailedMessage: 'Unfortunately one or more items in your cart can\'t be shipped to your location. Please choose a different delivery address.',
                 realtimeShippingProviders: [
                     'Fedex',
                     'UPS',
                     'USPS',
                 ],
+                requiresMarketingConsent: false,
                 remoteCheckoutProviders: [],
             },
             currency: {
@@ -50,10 +57,9 @@ export function getConfig(): Config {
                 symbol: '$',
                 thousandsSeparator: ',',
             },
-            formFields: {
-                shippingAddressFields: getFormFields(),
-                billingAddressFields: getFormFields(),
-            },
+            displayDateFormat: 'dd/MM/yyyy',
+            inputDateFormat: 'dd/MM/yyyy',
+            formFields: getFormFields(),
             links: {
                 cartLink: 'https://store-k1drp8k8.bcapp.dev/cart.php',
                 checkoutLink: 'https://store-k1drp8k8.bcapp.dev/checkout',
@@ -128,6 +134,7 @@ export function getConfigState(): ConfigState {
         data: getConfig(),
         meta: {
             externalSource: 'Partner',
+            variantIdentificationToken: 'default',
         },
         errors: {},
         statuses: {},

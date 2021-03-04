@@ -1,7 +1,9 @@
 import { Action } from '@bigcommerce/data-store';
 
 import { LoadCheckoutAction } from '../checkout';
+import { SpamProtectionAction } from '../spam-protection';
 
+import Customer from './customer';
 import { InternalCustomerResponseData } from './internal-customer-responses';
 
 export enum CustomerActionType {
@@ -12,11 +14,34 @@ export enum CustomerActionType {
     SignOutCustomerRequested = 'SIGN_OUT_CUSTOMER_REQUESTED',
     SignOutCustomerSucceeded = 'SIGN_OUT_CUSTOMER_SUCCEEDED',
     SignOutCustomerFailed = 'SIGN_OUT_CUSTOMER_FAILED',
+
+    CreateCustomerRequested = 'CREATE_CUSTOMER_REQUESTED',
+    CreateCustomerSucceeded = 'CREATE_CUSTOMER_SUCCEEDED',
+    CreateCustomerFailed = 'CREATE_CUSTOMER_FAILED',
+
+    CreateCustomerAddressRequested = 'CREATE_CUSTOMER_ADDRESS_REQUESTED',
+    CreateCustomerAddressSucceeded = 'CREATE_CUSTOMER_ADDRESS_SUCCEEDED',
+    CreateCustomerAddressFailed = 'CREATE_CUSTOMER_ADDRESS_FAILED',
 }
 
 export type CustomerAction =
     SignInCustomerAction |
-    SignOutCustomerAction;
+    SignOutCustomerAction |
+    CreateCustomerAddressAction |
+    CreateCustomerAction;
+
+export type CreateCustomerAction =
+    CreateCustomerRequestedAction |
+    CreateCustomerSucceededAction |
+    CreateCustomerFailedAction |
+    SpamProtectionAction |
+    LoadCheckoutAction;
+
+export type CreateCustomerAddressAction =
+    CreateCustomerAddressRequestedAction |
+    CreateCustomerAddressSucceededAction |
+    CreateCustomerAddressFailedAction |
+    LoadCheckoutAction;
 
 export type SignInCustomerAction =
     SignInCustomerRequestedAction |
@@ -52,4 +77,28 @@ export interface SignOutCustomerSucceededAction extends Action<InternalCustomerR
 
 export interface SignOutCustomerFailedAction extends Action<Error> {
     type: CustomerActionType.SignOutCustomerFailed;
+}
+
+export interface CreateCustomerRequestedAction extends Action {
+    type: CustomerActionType.CreateCustomerRequested;
+}
+
+export interface CreateCustomerSucceededAction extends Action {
+    type: CustomerActionType.CreateCustomerSucceeded;
+}
+
+export interface CreateCustomerFailedAction extends Action<Error> {
+    type: CustomerActionType.CreateCustomerFailed;
+}
+
+export interface CreateCustomerAddressRequestedAction extends Action {
+    type: CustomerActionType.CreateCustomerAddressRequested;
+}
+
+export interface CreateCustomerAddressSucceededAction extends Action<Customer> {
+    type: CustomerActionType.CreateCustomerAddressSucceeded;
+}
+
+export interface CreateCustomerAddressFailedAction extends Action<Error> {
+    type: CustomerActionType.CreateCustomerAddressFailed;
 }

@@ -1,9 +1,13 @@
+import { merge } from 'lodash';
+
 import { getBillingAddress } from '../billing/billing-addresses.mock';
 import { createInternalCheckoutSelectors, CheckoutStoreState, InternalCheckoutSelectors } from '../checkout';
 import { getCheckoutStoreStateWithOrder, getCheckoutWithGiftCertificates } from '../checkout/checkouts.mock';
 import { MissingDataError } from '../common/error/errors';
 import { getConfig } from '../config/configs.mock';
 import { getCustomer } from '../customer/customers.mock';
+import { HostedFieldType } from '../hosted-form';
+import { getHostedFormOrderData } from '../hosted-form/hosted-form-order-data.mock';
 import { getOrder, getOrderMeta } from '../order/orders.mock';
 import { getConsignments } from '../shipping/consignments.mock';
 import { getShippingAddress } from '../shipping/shipping-addresses.mock';
@@ -116,5 +120,94 @@ describe('PaymentRequestTransformer', () => {
         const paymentRequestBodyResponse = paymentRequestTransformer.transform(payment, selectors);
 
         expect(paymentRequestBodyResponse.paymentMethod).toEqual(expectedPaymentRequestBody.paymentMethod);
+    });
+
+    it('transforms from hosted form data', () => {
+        const result = paymentRequestTransformer.transformWithHostedFormData(
+            {
+                [HostedFieldType.CardNumber]: '4111 1111 1111 1111',
+                [HostedFieldType.CardCode]: '123',
+                [HostedFieldType.CardName]: 'BigCommerce',
+                [HostedFieldType.CardExpiry]: '10 / 20',
+            },
+            getHostedFormOrderData(),
+            'nonce'
+        );
+
+        expect(result)
+            .toEqual(merge({}, getPaymentRequestBody(), {
+                payment: {
+                    hostedFormNonce: 'nonce',
+                },
+            }));
+    });
+
+    it('transforms from hosted form data for paying with stored card', () => {
+        const result = paymentRequestTransformer.transformWithHostedFormData(
+            {
+                [HostedFieldType.CardNumberVerification]: '4111 1111 1111 1111',
+                [HostedFieldType.CardCodeVerification]: '123',
+            },
+            {
+                ...getHostedFormOrderData(),
+                payment: {
+                    instrumentId: 'abcdefg',
+                },
+            },
+            'nonce'
+        );
+
+        expect(result.payment)
+            .toEqual({
+                ccNumber: '4111111111111111',
+                ccCvv: '123',
+                hostedFormNonce: 'nonce',
+                instrumentId: 'abcdefg',
+            });
+    });
+
+    it('transforms from hosted form data with additional data', () => {
+        const additionalAction = {
+            type: 'recaptcha_v2_verification',
+            data: {
+                human_verification_token: 'googleRecaptchaToken',
+            },
+        };
+
+        const result = paymentRequestTransformer.transformWithHostedFormData(
+            {
+                [HostedFieldType.CardNumber]: '4111 1111 1111 1111',
+                [HostedFieldType.CardCode]: '123',
+                [HostedFieldType.CardName]: 'BigCommerce',
+                [HostedFieldType.CardExpiry]: '10 / 20',
+            },
+            {
+                ...getHostedFormOrderData(),
+                additionalAction,
+            },
+            'nonce'
+        );
+
+        expect(result)
+            .toEqual(merge({}, getPaymentRequestBody(), {
+                additionalAction,
+                payment: {
+                    hostedFormNonce: 'nonce',
+                },
+            }));
+    });
+
+    it('returns additinalAction within request if provided in payment parameter', () => {
+        const additionalActionMock = {
+            type: 'recaptcha_v2_verification',
+            data: {
+                human_verification_token: 'googleRecaptchaToken',
+            },
+        };
+        payment.additionalAction = additionalActionMock;
+
+        const paymentRequestBodyResponse = paymentRequestTransformer.transform(payment, selectors);
+
+        expect(paymentRequestBodyResponse.additionalAction).toEqual(additionalActionMock);
     });
 });

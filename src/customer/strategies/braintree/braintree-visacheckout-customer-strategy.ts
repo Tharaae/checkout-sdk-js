@@ -1,8 +1,7 @@
 import { CheckoutActionCreator, CheckoutStore, InternalCheckoutSelectors } from '../../../checkout';
 import { InvalidArgumentError, MissingDataError, MissingDataErrorType, NotImplementedError } from '../../../common/error/errors';
 import { PaymentMethod, PaymentMethodActionCreator } from '../../../payment';
-import { BraintreeVisaCheckoutPaymentProcessor, VisaCheckoutScriptLoader } from '../../../payment/strategies/braintree';
-import { VisaCheckoutPaymentSuccessPayload } from '../../../payment/strategies/braintree/visacheckout';
+import { BraintreeVisaCheckoutPaymentProcessor, VisaCheckoutPaymentSuccessPayload, VisaCheckoutScriptLoader } from '../../../payment/strategies/braintree';
 import { RemoteCheckoutActionCreator } from '../../../remote-checkout';
 import { CustomerInitializeOptions, CustomerRequestOptions } from '../../customer-request-options';
 import CustomerStrategyActionCreator from '../../customer-strategy-action-creator';
@@ -143,6 +142,8 @@ export default class BraintreeVisaCheckoutCustomerStrategy implements CustomerSt
             <a class="v-learn v-learn-default" style="text-align: right; display: block; font-size: 10px; color: #003366;" href="#" data-locale="en_US">Tell Me More</a>`;
 
         const visaCheckoutButton = document.createElement('div');
+        visaCheckoutButton.style.display = 'flex';
+        visaCheckoutButton.style.flexDirection = 'column';
         visaCheckoutButton.style.visibility = 'hidden';
         visaCheckoutButton.className = buttonClass;
         visaCheckoutButton.innerHTML = buttonTemplate;

@@ -1,5 +1,5 @@
 import { createBillingAddressSelectorFactory } from '../billing';
-import { createCartSelectorFactory } from '../cart/cart-selector';
+import { createCartSelectorFactory } from '../cart';
 import { createCheckoutButtonSelectorFactory } from '../checkout-buttons';
 import { createFreezeProxies } from '../common/utility';
 import { createConfigSelectorFactory } from '../config';
@@ -12,7 +12,9 @@ import { createPaymentMethodSelectorFactory, createPaymentSelectorFactory, creat
 import { createInstrumentSelectorFactory } from '../payment/instrument';
 import { createRemoteCheckoutSelectorFactory } from '../remote-checkout';
 import { createConsignmentSelectorFactory, createShippingAddressSelectorFactory, createShippingCountrySelectorFactory, createShippingStrategySelectorFactory } from '../shipping';
-import { createStoreCreditSelectorFactory } from '../store-credit/store-credit-selector';
+import { createSignInEmailSelectorFactory } from '../signin-email';
+import { createStoreCreditSelectorFactory } from '../store-credit';
+import { createSubscriptionsSelectorFactory } from '../subscription';
 
 import { createCheckoutSelectorFactory } from './checkout-selector';
 import { CheckoutStoreOptions } from './checkout-store';
@@ -47,17 +49,18 @@ export function createInternalCheckoutSelectorsFactory(): InternalCheckoutSelect
     const createOrderSelector = createOrderSelectorFactory();
     const createPaymentSelector = createPaymentSelectorFactory();
     const createStoreCreditSelector = createStoreCreditSelectorFactory();
+    const createSubscriptionsSelector = createSubscriptionsSelectorFactory();
+    const createSignInEmailSelector = createSignInEmailSelectorFactory();
 
     return (state, options = {}) => {
         const billingAddress = createBillingAddressSelector(state.billingAddress);
         const cart = createCartSelector(state.cart);
         const checkoutButton = createCheckoutButtonSelector(state.checkoutButton);
-        const config = createConfigSelector(state.config);
         const countries = createCountrySelector(state.countries);
         const coupons = createCouponSelector(state.coupons);
         const customer = createCustomerSelector(state.customer);
         const customerStrategies = createCustomerStrategySelector(state.customerStrategies);
-        const form = createFormSelector(state.config);
+        const form = createFormSelector(state.formFields);
         const giftCertificates = createGiftCertificateSelector(state.giftCertificates);
         const instruments = createInstrumentSelector(state.instruments);
         const paymentMethods = createPaymentMethodSelector(state.paymentMethods);
@@ -66,13 +69,16 @@ export function createInternalCheckoutSelectorsFactory(): InternalCheckoutSelect
         const shippingAddress = createShippingAddressSelector(state.consignments);
         const shippingCountries = createShippingCountrySelector(state.shippingCountries);
         const shippingStrategies = createShippingStrategySelector(state.shippingStrategies);
+        const subscriptions = createSubscriptionsSelector(state.subscriptions);
         const storeCredit = createStoreCreditSelector(state.storeCredit);
+        const signInEmail = createSignInEmailSelector(state.signInEmail);
 
         // Compose selectors
         const consignments = createConsignmentSelector(state.consignments, cart);
         const checkout = createCheckoutSelector(state.checkout, billingAddress, cart, consignments, coupons, customer, giftCertificates);
         const order = createOrderSelector(state.order, billingAddress, coupons);
         const payment = createPaymentSelector(checkout, order);
+        const config = createConfigSelector(state.config, state.formFields);
 
         const selectors = {
             billingAddress,
@@ -96,6 +102,8 @@ export function createInternalCheckoutSelectorsFactory(): InternalCheckoutSelect
             shippingAddress,
             shippingCountries,
             shippingStrategies,
+            signInEmail,
+            subscriptions,
             storeCredit,
         };
 

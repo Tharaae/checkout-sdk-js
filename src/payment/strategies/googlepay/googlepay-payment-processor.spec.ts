@@ -5,38 +5,22 @@ import { BillingAddressActionCreator, BillingAddressRequestSender } from '../../
 import { getCartState } from '../../../cart/carts.mock';
 import { createCheckoutStore, CheckoutRequestSender, CheckoutStore } from '../../../checkout';
 import { getCheckoutState } from '../../../checkout/checkouts.mock';
-import {
-    MissingDataError,
-    MissingDataErrorType,
-    NotInitializedError,
-    NotInitializedErrorType,
-} from '../../../common/error/errors';
+import { MissingDataError, MissingDataErrorType, NotInitializedError, NotInitializedErrorType } from '../../../common/error/errors';
 import { getConfigState } from '../../../config/configs.mock';
 import { getCustomerState } from '../../../customer/customers.mock';
-import ConsignmentActionCreator from '../../../shipping/consignment-action-creator';
-import ConsignmentRequestSender from '../../../shipping/consignment-request-sender';
+import { ConsignmentActionCreator, ConsignmentRequestSender } from '../../../shipping';
+import { SubscriptionsActionCreator, SubscriptionsRequestSender } from '../../../subscription';
 import PaymentMethod from '../../payment-method';
 import PaymentMethodActionCreator from '../../payment-method-action-creator';
 import PaymentMethodRequestSender from '../../payment-method-request-sender';
 import { getGooglePay, getPaymentMethodsState } from '../../payment-methods.mock';
 import { BraintreeScriptLoader, BraintreeSDKCreator } from '../braintree';
 
-import {
-    GooglePaymentsError,
-    GooglePayClient,
-    GooglePayInitializer,
-    GooglePayIsReadyToPayResponse,
-    TokenizePayload
-} from './googlepay';
+import { GooglePaymentsError, GooglePayClient, GooglePayInitializer, GooglePayIsReadyToPayResponse, TokenizePayload } from './googlepay';
 import GooglePayBraintreeInitializer from './googlepay-braintree-initializer';
 import GooglePayPaymentProcessor from './googlepay-payment-processor';
 import GooglePayScriptLoader from './googlepay-script-loader';
-import {
-    getGooglePaymentDataMock,
-    getGooglePayAddressMock,
-    getGooglePayPaymentDataRequestMock,
-    getGooglePaySDKMock
-} from './googlepay.mock';
+import { getGooglePaymentDataMock, getGooglePayAddressMock, getGooglePayPaymentDataRequestMock, getGooglePaySDKMock } from './googlepay.mock';
 
 describe('GooglePayPaymentProcessor', () => {
     let processor: GooglePayPaymentProcessor;
@@ -50,7 +34,12 @@ describe('GooglePayPaymentProcessor', () => {
 
     beforeEach(() => {
         const scriptLoader = createScriptLoader();
-        billingAddressActionCreator = new BillingAddressActionCreator(new BillingAddressRequestSender(requestSender));
+        billingAddressActionCreator = new BillingAddressActionCreator(
+            new BillingAddressRequestSender(requestSender),
+            new SubscriptionsActionCreator(
+                new SubscriptionsRequestSender(requestSender)
+            )
+        );
 
         store = createCheckoutStore({
             checkout: getCheckoutState(),
@@ -201,10 +190,10 @@ describe('GooglePayPaymentProcessor', () => {
     });
 
     describe('#handleSuccess', () => {
-        let tokenizePayload: TokenizePayload;
+        let tokenizePayload: Promise<TokenizePayload>;
 
         beforeEach(() => {
-            tokenizePayload = {
+            tokenizePayload = Promise.resolve({
                 details: {
                     cardType: 'MasterCard',
                     lastFour: '4111',
@@ -214,7 +203,7 @@ describe('GooglePayPaymentProcessor', () => {
                 nonce: 'nonce',
                 description: '',
                 binData: {},
-            } as TokenizePayload;
+            }) as Promise<TokenizePayload>;
 
             const googlePayIsReadyToPayResponse = {
                 result: true,

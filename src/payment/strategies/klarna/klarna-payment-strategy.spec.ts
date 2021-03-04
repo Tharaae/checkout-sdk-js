@@ -4,18 +4,12 @@ import { createScriptLoader } from '@bigcommerce/script-loader';
 import { merge, omit } from 'lodash';
 import { of, Observable } from 'rxjs';
 
-import {
-    createCheckoutStore,
-    CheckoutRequestSender,
-    CheckoutStore,
-    CheckoutValidator
-} from '../../../checkout';
+import { createCheckoutStore, CheckoutRequestSender, CheckoutStore, CheckoutValidator } from '../../../checkout';
 import { getCheckoutStoreState } from '../../../checkout/checkouts.mock';
 import { MissingDataError } from '../../../common/error/errors';
 import { OrderActionCreator, OrderActionType, OrderRequestBody, OrderRequestSender } from '../../../order';
 import { OrderFinalizationNotRequiredError } from '../../../order/errors';
 import { getOrderRequestBody } from '../../../order/internal-orders.mock';
-import { createSpamProtection, SpamProtectionActionCreator } from '../../../order/spam-protection';
 import { RemoteCheckoutActionCreator, RemoteCheckoutActionType, RemoteCheckoutRequestSender } from '../../../remote-checkout';
 import { PaymentMethodCancelledError, PaymentMethodInvalidError } from '../../errors';
 import PaymentMethod from '../../payment-method';
@@ -27,12 +21,7 @@ import { getKlarna } from '../../payment-methods.mock';
 import KlarnaCredit from './klarna-credit';
 import KlarnaPaymentStrategy from './klarna-payment-strategy';
 import KlarnaScriptLoader from './klarna-script-loader';
-import {
-    getEUBillingAddress,
-    getEUBillingAddressWithNoPhone,
-    getKlarnaUpdateSessionParams,
-    getKlarnaUpdateSessionParamsPhone
-} from './klarna.mock';
+import { getEUBillingAddress, getEUBillingAddressWithNoPhone, getKlarnaUpdateSessionParams, getKlarnaUpdateSessionParamsForOC, getKlarnaUpdateSessionParamsPhone, getOCBillingAddress } from './klarna.mock';
 
 describe('KlarnaPaymentStrategy', () => {
     let initializePaymentAction: Observable<Action>;
@@ -58,8 +47,7 @@ describe('KlarnaPaymentStrategy', () => {
 
         orderActionCreator = new OrderActionCreator(
             new OrderRequestSender(createRequestSender()),
-            new CheckoutValidator(new CheckoutRequestSender(createRequestSender())),
-            new SpamProtectionActionCreator(createSpamProtection(createScriptLoader()))
+            new CheckoutValidator(new CheckoutRequestSender(createRequestSender()))
         );
         paymentMethodActionCreator = new PaymentMethodActionCreator(new PaymentMethodRequestSender(createRequestSender()));
         remoteCheckoutActionCreator = new RemoteCheckoutActionCreator(
@@ -87,6 +75,7 @@ describe('KlarnaPaymentStrategy', () => {
                 methodId: paymentMethod.id,
                 gatewayId: paymentMethod.gateway,
             },
+            useStoreCredit: true,
         });
 
         loadPaymentMethodAction = of(createAction(PaymentMethodActionType.LoadPaymentMethodSucceeded, paymentMethod, { methodId: paymentMethod.id }));
@@ -174,6 +163,28 @@ describe('KlarnaPaymentStrategy', () => {
                 .toHaveBeenCalledWith(getKlarnaUpdateSessionParamsPhone(), expect.any(Function));
         });
 
+        it('loads widget in OC', async () => {
+            store = store = createCheckoutStore({
+                ...getCheckoutStoreState(),
+                billingAddress: { data: getOCBillingAddress(), errors: {}, statuses: {} },
+            });
+            strategy = new KlarnaPaymentStrategy(
+                store,
+                orderActionCreator,
+                paymentMethodActionCreator,
+                remoteCheckoutActionCreator,
+                scriptLoader
+            );
+            jest.spyOn(store, 'dispatch').mockReturnValue(Promise.resolve(store.getState()));
+            jest.spyOn(store.getState().paymentMethods, 'getPaymentMethod').mockReturnValue(paymentMethodMock);
+
+            await strategy.initialize({ methodId: paymentMethod.id, klarna: { container: '#container' } });
+            strategy.execute(payload);
+
+            expect(klarnaCredit.authorize)
+                .toHaveBeenCalledWith(getKlarnaUpdateSessionParamsForOC(), expect.any(Function));
+        });
+
         it('loads widget in EU with no phone', async () => {
             store = store = createCheckoutStore({
                 ...getCheckoutStoreState(),
@@ -226,7 +237,7 @@ describe('KlarnaPaymentStrategy', () => {
                 .toHaveBeenCalledWith('klarna', { authorizationToken: 'bar' });
 
             expect(orderActionCreator.submitOrder)
-                .toHaveBeenCalledWith({ ...payload, payment: omit(payload.payment, 'paymentData'), useStoreCredit: false }, undefined);
+                .toHaveBeenCalledWith({ ...payload, payment: omit(payload.payment, 'paymentData'), useStoreCredit: true }, undefined);
 
             expect(store.dispatch).toHaveBeenCalledWith(initializePaymentAction);
             expect(store.dispatch).toHaveBeenCalledWith(submitOrderAction);

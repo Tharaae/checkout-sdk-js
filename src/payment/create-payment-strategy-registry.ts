@@ -1,15 +1,17 @@
 import { createFormPoster } from '@bigcommerce/form-poster';
 import { RequestSender } from '@bigcommerce/request-sender';
-import { getScriptLoader } from '@bigcommerce/script-loader';
+import { createScriptLoader, getScriptLoader, getStylesheetLoader } from '@bigcommerce/script-loader';
 
 import { BillingAddressActionCreator, BillingAddressRequestSender } from '../billing';
 import { CheckoutActionCreator, CheckoutRequestSender, CheckoutStore, CheckoutValidator } from '../checkout';
 import { ConfigActionCreator, ConfigRequestSender } from '../config';
+import { FormFieldsActionCreator, FormFieldsRequestSender } from '../form';
+import { HostedFormFactory } from '../hosted-form';
 import { OrderActionCreator, OrderRequestSender } from '../order';
-import { SpamProtectionActionCreator } from '../order/spam-protection';
-import GoogleRecaptcha from '../order/spam-protection/google-recaptcha';
 import { RemoteCheckoutActionCreator, RemoteCheckoutRequestSender } from '../remote-checkout';
+import { createSpamProtection, GoogleRecaptcha, PaymentHumanVerificationHandler, SpamProtectionActionCreator, SpamProtectionRequestSender } from '../spam-protection';
 import { StoreCreditActionCreator, StoreCreditRequestSender } from '../store-credit';
+import { SubscriptionsActionCreator, SubscriptionsRequestSender } from '../subscription';
 
 import PaymentActionCreator from './payment-action-creator';
 import PaymentMethodActionCreator from './payment-method-action-creator';
@@ -23,38 +25,36 @@ import { AdyenV2PaymentStrategy, AdyenV2ScriptLoader } from './strategies/adyenv
 import { AffirmPaymentStrategy, AffirmScriptLoader } from './strategies/affirm';
 import { AfterpayPaymentStrategy, AfterpayScriptLoader } from './strategies/afterpay';
 import { AmazonPayPaymentStrategy, AmazonPayScriptLoader } from './strategies/amazon-pay';
-import {
-    createBraintreePaymentProcessor,
-    createBraintreeVisaCheckoutPaymentProcessor,
-    BraintreeCreditCardPaymentStrategy,
-    BraintreePaypalPaymentStrategy,
-    BraintreeScriptLoader,
-    BraintreeSDKCreator,
-    BraintreeVisaCheckoutPaymentStrategy,
-    VisaCheckoutScriptLoader
-} from './strategies/braintree';
-import {
-    CardinalClient,
-    CardinalScriptLoader,
-    CardinalThreeDSecureFlow,
-} from './strategies/cardinal';
+import { createAmazonPayV2PaymentProcessor, AmazonPayV2PaymentStrategy } from './strategies/amazon-pay-v2';
+import { BarclaysPaymentStrategy } from './strategies/barclays';
+import { BlueSnapV2PaymentStrategy } from './strategies/bluesnapv2';
+import { BoltPaymentStrategy, BoltScriptLoader } from './strategies/bolt';
+import { createBraintreePaymentProcessor, createBraintreeVisaCheckoutPaymentProcessor, BraintreeCreditCardPaymentStrategy, BraintreePaypalPaymentStrategy, BraintreeScriptLoader, BraintreeSDKCreator, BraintreeVisaCheckoutPaymentStrategy, VisaCheckoutScriptLoader } from './strategies/braintree';
+import { CardinalClient, CardinalScriptLoader, CardinalThreeDSecureFlow, CardinalThreeDSecureFlowV2 } from './strategies/cardinal';
 import { ChasePayPaymentStrategy, ChasePayScriptLoader } from './strategies/chasepay';
+import { CheckoutcomAPMPaymentStrategy } from './strategies/checkoutcom-apm';
 import { ConvergePaymentStrategy } from './strategies/converge';
 import { CreditCardPaymentStrategy } from './strategies/credit-card';
+import { CreditCardRedirectPaymentStrategy } from './strategies/credit-card-redirect';
 import { CyberSourcePaymentStrategy } from './strategies/cybersource/index';
-import {
-    createGooglePayPaymentProcessor,
-    GooglePayBraintreeInitializer,
-    GooglePayPaymentStrategy,
-    GooglePayStripeInitializer
-} from './strategies/googlepay';
+import { CyberSourceV2PaymentStrategy } from './strategies/cybersourcev2';
+import { ExternalPaymentStrategy } from './strategies/external';
+import { createGooglePayPaymentProcessor, GooglePayAdyenV2Initializer, GooglePayAdyenV2PaymentProcessor, GooglePayAuthorizeNetInitializer, GooglePayBraintreeInitializer, GooglePayCheckoutcomInitializer, GooglePayCybersourceV2Initializer, GooglePayPaymentStrategy, GooglePayStripeInitializer } from './strategies/googlepay';
 import { KlarnaPaymentStrategy, KlarnaScriptLoader } from './strategies/klarna';
+import { KlarnaV2PaymentStrategy, KlarnaV2ScriptLoader } from './strategies/klarnav2';
 import { LegacyPaymentStrategy } from './strategies/legacy';
 import { MasterpassPaymentStrategy, MasterpassScriptLoader } from './strategies/masterpass';
+import { MolliePaymentStrategy, MollieScriptLoader } from './strategies/mollie';
 import { NoPaymentDataRequiredPaymentStrategy } from './strategies/no-payment';
 import { OfflinePaymentStrategy } from './strategies/offline';
 import { OffsitePaymentStrategy } from './strategies/offsite';
 import { PaypalExpressPaymentStrategy, PaypalProPaymentStrategy, PaypalScriptLoader } from './strategies/paypal';
+import { createPaypalCommercePaymentProcessor,
+    PaypalCommerceCreditCardPaymentStrategy,
+    PaypalCommerceFundingKeyResolver,
+    PaypalCommerceHostedForm,
+    PaypalCommercePaymentStrategy,
+    PaypalCommerceRequestSender } from './strategies/paypal-commerce';
 import { SagePayPaymentStrategy } from './strategies/sage-pay';
 import { SquarePaymentStrategy, SquareScriptLoader } from './strategies/square';
 import { StripeScriptLoader, StripeV3PaymentStrategy } from './strategies/stripev3';
@@ -72,29 +72,53 @@ export default function createPaymentStrategyRegistry(
     const scriptLoader = getScriptLoader();
     const paymentRequestTransformer = new PaymentRequestTransformer();
     const paymentRequestSender = new PaymentRequestSender(paymentClient);
-    const billingAddressActionCreator = new BillingAddressActionCreator(new BillingAddressRequestSender(requestSender));
+    const billingAddressActionCreator = new BillingAddressActionCreator(
+        new BillingAddressRequestSender(requestSender),
+        new SubscriptionsActionCreator(new SubscriptionsRequestSender(requestSender))
+    );
     const braintreePaymentProcessor = createBraintreePaymentProcessor(scriptLoader);
     const checkoutRequestSender = new CheckoutRequestSender(requestSender);
     const checkoutValidator = new CheckoutValidator(checkoutRequestSender);
-    const spamProtectionActionCreator = new SpamProtectionActionCreator(spamProtection);
-    const orderActionCreator = new OrderActionCreator(new OrderRequestSender(requestSender), checkoutValidator, spamProtectionActionCreator);
+    const spamProtectionActionCreator = new SpamProtectionActionCreator(spamProtection, new SpamProtectionRequestSender(requestSender));
+    const orderActionCreator = new OrderActionCreator(new OrderRequestSender(requestSender), checkoutValidator);
     const storeCreditActionCreator = new StoreCreditActionCreator(new StoreCreditRequestSender(requestSender));
-    const paymentActionCreator = new PaymentActionCreator(paymentRequestSender, orderActionCreator, paymentRequestTransformer);
+    const paymentHumanVerificationHandler = new PaymentHumanVerificationHandler(createSpamProtection(createScriptLoader()));
+    const paymentActionCreator = new PaymentActionCreator(paymentRequestSender, orderActionCreator, paymentRequestTransformer, paymentHumanVerificationHandler);
     const paymentMethodActionCreator = new PaymentMethodActionCreator(new PaymentMethodRequestSender(requestSender));
     const remoteCheckoutActionCreator = new RemoteCheckoutActionCreator(new RemoteCheckoutRequestSender(requestSender));
     const configActionCreator = new ConfigActionCreator(new ConfigRequestSender(requestSender));
-    const checkoutActionCreator = new CheckoutActionCreator(checkoutRequestSender, configActionCreator);
-    const paymentStrategyActionCreator = new PaymentStrategyActionCreator(registry, orderActionCreator);
+    const formFieldsActionCreator = new FormFieldsActionCreator(new FormFieldsRequestSender(requestSender));
+    const checkoutActionCreator = new CheckoutActionCreator(checkoutRequestSender, configActionCreator, formFieldsActionCreator);
+    const paymentStrategyActionCreator = new PaymentStrategyActionCreator(registry, orderActionCreator, spamProtectionActionCreator);
     const formPoster = createFormPoster();
+    const hostedFormFactory = new HostedFormFactory(store);
 
     registry.register(PaymentStrategyType.ADYENV2, () =>
         new AdyenV2PaymentStrategy(
             store,
             paymentActionCreator,
             orderActionCreator,
-            new AdyenV2ScriptLoader(scriptLoader),
-            formPoster,
-            locale
+            new AdyenV2ScriptLoader(scriptLoader, getStylesheetLoader())
+        )
+    );
+
+    registry.register(PaymentStrategyType.ADYENV2_GOOGLEPAY, () =>
+        new GooglePayPaymentStrategy(
+            store,
+            checkoutActionCreator,
+            paymentMethodActionCreator,
+            paymentStrategyActionCreator,
+            paymentActionCreator,
+            orderActionCreator,
+            createGooglePayPaymentProcessor(
+                store,
+                new GooglePayAdyenV2Initializer()
+            ),
+            new GooglePayAdyenV2PaymentProcessor(
+                store,
+                paymentActionCreator,
+                new AdyenV2ScriptLoader(scriptLoader, getStylesheetLoader())
+            )
         )
     );
 
@@ -130,11 +154,70 @@ export default function createPaymentStrategyRegistry(
         )
     );
 
+    registry.register(PaymentStrategyType.AUTHORIZENET_GOOGLE_PAY, () =>
+        new GooglePayPaymentStrategy(
+            store,
+            checkoutActionCreator,
+            paymentMethodActionCreator,
+            paymentStrategyActionCreator,
+            paymentActionCreator,
+            orderActionCreator,
+            createGooglePayPaymentProcessor(
+                store,
+                new GooglePayAuthorizeNetInitializer()
+            )
+        )
+    );
+
+    registry.register(PaymentStrategyType.AMAZONPAYV2, () =>
+        new AmazonPayV2PaymentStrategy(
+            store,
+            paymentStrategyActionCreator,
+            paymentMethodActionCreator,
+            orderActionCreator,
+            paymentActionCreator,
+            createAmazonPayV2PaymentProcessor()
+        )
+    );
+
+    registry.register(PaymentStrategyType.BARCLAYS, () =>
+        new BarclaysPaymentStrategy(
+            store,
+            orderActionCreator,
+            paymentActionCreator,
+            hostedFormFactory,
+            new CardinalThreeDSecureFlowV2(
+                store,
+                paymentActionCreator,
+                new CardinalClient(new CardinalScriptLoader(scriptLoader))
+            )
+        )
+    );
+
+    registry.register(PaymentStrategyType.BLUESNAPV2, () =>
+        new BlueSnapV2PaymentStrategy(
+            store,
+            orderActionCreator,
+            paymentActionCreator
+        )
+    );
+
     registry.register(PaymentStrategyType.CREDIT_CARD, () =>
         new CreditCardPaymentStrategy(
             store,
             orderActionCreator,
-            paymentActionCreator
+            paymentActionCreator,
+            hostedFormFactory
+        )
+    );
+
+    registry.register(PaymentStrategyType.CHECKOUTCOM, () =>
+        new CreditCardRedirectPaymentStrategy(
+            store,
+            orderActionCreator,
+            paymentActionCreator,
+            hostedFormFactory,
+            formPoster
         )
     );
 
@@ -143,10 +226,25 @@ export default function createPaymentStrategyRegistry(
             store,
             orderActionCreator,
             paymentActionCreator,
+            hostedFormFactory,
             new CardinalThreeDSecureFlow(
                 store,
                 paymentActionCreator,
                 paymentMethodActionCreator,
+                new CardinalClient(new CardinalScriptLoader(scriptLoader))
+            )
+        )
+    );
+
+    registry.register(PaymentStrategyType.CYBERSOURCEV2, () =>
+        new CyberSourceV2PaymentStrategy(
+            store,
+            orderActionCreator,
+            paymentActionCreator,
+            hostedFormFactory,
+            new CardinalThreeDSecureFlowV2(
+                store,
+                paymentActionCreator,
                 new CardinalClient(new CardinalScriptLoader(scriptLoader))
             )
         )
@@ -159,6 +257,16 @@ export default function createPaymentStrategyRegistry(
             paymentMethodActionCreator,
             remoteCheckoutActionCreator,
             new KlarnaScriptLoader(scriptLoader)
+        )
+    );
+
+    registry.register(PaymentStrategyType.KLARNAV2, () =>
+        new KlarnaV2PaymentStrategy(
+            store,
+            orderActionCreator,
+            paymentMethodActionCreator,
+            remoteCheckoutActionCreator,
+            new KlarnaV2ScriptLoader(scriptLoader)
         )
     );
 
@@ -189,6 +297,7 @@ export default function createPaymentStrategyRegistry(
             store,
             orderActionCreator,
             paymentActionCreator,
+            hostedFormFactory,
             new CardinalThreeDSecureFlow(
                 store,
                 paymentActionCreator,
@@ -214,11 +323,44 @@ export default function createPaymentStrategyRegistry(
         )
     );
 
+    registry.register(PaymentStrategyType.PAYPAL_COMMERCE_CREDIT_CARD, () =>
+        new PaypalCommerceCreditCardPaymentStrategy(
+            store,
+            paymentMethodActionCreator,
+            new PaypalCommerceHostedForm(createPaypalCommercePaymentProcessor(scriptLoader, requestSender)),
+            orderActionCreator,
+            paymentActionCreator
+        )
+    );
+
+    registry.register(PaymentStrategyType.PAYPAL_COMMERCE, () =>
+        new PaypalCommercePaymentStrategy(
+            store,
+            orderActionCreator,
+            paymentActionCreator,
+            createPaypalCommercePaymentProcessor(scriptLoader, requestSender),
+            new PaypalCommerceFundingKeyResolver(),
+            new PaypalCommerceRequestSender(requestSender)
+        )
+    );
+
+    registry.register(PaymentStrategyType.PAYPAL_COMMERCE_ALTERNATIVE_METHODS, () =>
+        new PaypalCommercePaymentStrategy(
+            store,
+            orderActionCreator,
+            paymentActionCreator,
+            createPaypalCommercePaymentProcessor(scriptLoader, requestSender),
+            new PaypalCommerceFundingKeyResolver(),
+            new PaypalCommerceRequestSender(requestSender)
+        )
+    );
+
     registry.register(PaymentStrategyType.SAGE_PAY, () =>
         new SagePayPaymentStrategy(
             store,
             orderActionCreator,
             paymentActionCreator,
+            hostedFormFactory,
             formPoster
         )
     );
@@ -325,6 +467,7 @@ export default function createPaymentStrategyRegistry(
             store,
             orderActionCreator,
             paymentActionCreator,
+            hostedFormFactory,
             new WepayRiskClient(scriptLoader)
         )
     );
@@ -353,6 +496,36 @@ export default function createPaymentStrategyRegistry(
         )
     );
 
+    registry.register(PaymentStrategyType.CYBERSOURCEV2_GOOGLE_PAY, () =>
+        new GooglePayPaymentStrategy(
+            store,
+            checkoutActionCreator,
+            paymentMethodActionCreator,
+            paymentStrategyActionCreator,
+            paymentActionCreator,
+            orderActionCreator,
+            createGooglePayPaymentProcessor(
+                store,
+                new GooglePayCybersourceV2Initializer()
+            )
+        )
+    );
+
+    registry.register(PaymentStrategyType.CHECKOUTCOM_GOOGLE_PAY, () =>
+        new GooglePayPaymentStrategy(
+            store,
+            checkoutActionCreator,
+            paymentMethodActionCreator,
+            paymentStrategyActionCreator,
+            paymentActionCreator,
+            orderActionCreator,
+            createGooglePayPaymentProcessor(
+                store,
+                new GooglePayCheckoutcomInitializer(requestSender)
+            )
+        )
+    );
+
     registry.register(PaymentStrategyType.ZIP, () =>
         new ZipPaymentStrategy(
             store,
@@ -360,6 +533,7 @@ export default function createPaymentStrategyRegistry(
             paymentActionCreator,
             paymentMethodActionCreator,
             storeCreditActionCreator,
+            remoteCheckoutActionCreator,
             new ZipScriptLoader(scriptLoader),
             requestSender
         )
@@ -370,8 +544,27 @@ export default function createPaymentStrategyRegistry(
             store,
             orderActionCreator,
             paymentActionCreator,
+            hostedFormFactory,
             formPoster
-            )
+        )
+    );
+
+    registry.register(PaymentStrategyType.LAYBUY, () =>
+        new ExternalPaymentStrategy(
+            store,
+            orderActionCreator,
+            paymentActionCreator,
+            formPoster
+        )
+    );
+
+    registry.register(PaymentStrategyType.SEZZLE, () =>
+        new ExternalPaymentStrategy(
+            store,
+            orderActionCreator,
+            paymentActionCreator,
+            formPoster
+        )
     );
 
     registry.register(PaymentStrategyType.STRIPEV3, () =>
@@ -380,7 +573,38 @@ export default function createPaymentStrategyRegistry(
             paymentMethodActionCreator,
             paymentActionCreator,
             orderActionCreator,
-            new StripeScriptLoader(scriptLoader)
+            new StripeScriptLoader(scriptLoader),
+            storeCreditActionCreator,
+            locale
+        )
+    );
+
+    registry.register(PaymentStrategyType.BOLT, () =>
+        new BoltPaymentStrategy(
+            store,
+            orderActionCreator,
+            paymentActionCreator,
+            paymentMethodActionCreator,
+            storeCreditActionCreator,
+            new BoltScriptLoader(scriptLoader)
+        )
+    );
+
+    registry.register(PaymentStrategyType.CHECKOUTCOM_APM, () =>
+        new CheckoutcomAPMPaymentStrategy(
+            store,
+            orderActionCreator,
+            paymentActionCreator,
+            hostedFormFactory
+        )
+    );
+
+    registry.register(PaymentStrategyType.MOLLIE, () =>
+        new MolliePaymentStrategy(
+            store,
+            new MollieScriptLoader(scriptLoader),
+            orderActionCreator,
+            paymentActionCreator
         )
     );
 

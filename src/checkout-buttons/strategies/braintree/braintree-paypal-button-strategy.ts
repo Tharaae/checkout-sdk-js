@@ -5,7 +5,7 @@ import { Address, LegacyAddress } from '../../../address';
 import { CheckoutActionCreator, CheckoutStore } from '../../../checkout';
 import { MissingDataError, MissingDataErrorType, NotInitializedError, NotInitializedErrorType, StandardError } from '../../../common/error/errors';
 import { PaymentMethod } from '../../../payment';
-import { BraintreeAddress, BraintreeError, BraintreePaypalCheckout, BraintreeSDKCreator, BraintreeTokenizePayload } from '../../../payment/strategies/braintree';
+import { BraintreeError, BraintreePaypalCheckout, BraintreeShippingAddressOverride, BraintreeSDKCreator, BraintreeTokenizePayload } from '../../../payment/strategies/braintree';
 import { PaypalAuthorizeData, PaypalScriptLoader } from '../../../payment/strategies/paypal';
 import { CheckoutButtonInitializeOptions } from '../../checkout-button-options';
 import CheckoutButtonStrategy from '../checkout-button-strategy';
@@ -62,7 +62,7 @@ export default class BraintreePaypalButtonStrategy implements CheckoutButtonStra
                         label: this._offerCredit ? 'credit' : undefined,
                         ...pick(paypalOptions.style, 'layout', 'size', 'color', 'label', 'shape', 'tagline', 'fundingicons'),
                     },
-                    payment: () => this._setupPayment(paypalOptions.onPaymentError),
+                    payment: () => this._setupPayment(paypalOptions.shippingAddress, paypalOptions.onPaymentError),
                     onAuthorize: data => this._tokenizePayment(data, paypalOptions.shouldProcessPayment, paypalOptions.onAuthorizeError),
                 }, options.containerId);
             });
@@ -77,13 +77,18 @@ export default class BraintreePaypalButtonStrategy implements CheckoutButtonStra
         return Promise.resolve();
     }
 
-    private _setupPayment(onError?: (error: BraintreeError | StandardError) => void): Promise<string> {
+    private _setupPayment(
+        address?: Address | null,
+        onError?: (error: BraintreeError | StandardError) => void
+    ): Promise<string> {
         return this._store.dispatch(this._checkoutActionCreator.loadDefaultCheckout())
             .then(state => {
                 const checkout = state.checkout.getCheckout();
                 const config = state.config.getStoreConfig();
                 const customer = state.customer.getCustomer();
-                const address = customer && customer.addresses && customer.addresses[0];
+                const shippingAddress = address === undefined ?
+                    customer && customer.addresses && customer.addresses[0] :
+                    address;
 
                 if (!this._paypalCheckout) {
                     throw new NotInitializedError(NotInitializedErrorType.CheckoutButtonNotInitialized);
@@ -101,7 +106,7 @@ export default class BraintreePaypalButtonStrategy implements CheckoutButtonStra
                     flow: 'checkout',
                     enableShippingAddress: true,
                     shippingAddressEditable: false,
-                    shippingAddressOverride: address ? this._mapToBraintreeAddress(address) : undefined,
+                    shippingAddressOverride: shippingAddress ? this._mapToBraintreeAddress(shippingAddress) : undefined,
                     amount: checkout.outstandingBalance,
                     currency: config.currency.code,
                     offerCredit: this._offerCredit,
@@ -162,7 +167,7 @@ export default class BraintreePaypalButtonStrategy implements CheckoutButtonStra
             email: payload.details.email,
             first_name: firstName,
             last_name: lastName,
-            phone_number: shippingAddress && shippingAddress.phone || payload.details.phone,
+            phone_number: payload.details.phone,
             address_line_1: shippingAddress && shippingAddress.line1,
             address_line_2: shippingAddress && shippingAddress.line2,
             city: shippingAddress && shippingAddress.city,
@@ -179,9 +184,9 @@ export default class BraintreePaypalButtonStrategy implements CheckoutButtonStra
         if (billingAddress) {
             return {
                 email: payload.details.email,
-                first_name: billingAddress.firstName || payload.details.firstName,
-                last_name: billingAddress.lastName || payload.details.lastName,
-                phone_number: billingAddress.phone || payload.details.phone,
+                first_name: payload.details.firstName,
+                last_name: payload.details.lastName,
+                phone_number: payload.details.phone,
                 address_line_1: billingAddress.line1,
                 address_line_2: billingAddress.line2,
                 city: billingAddress.city,
@@ -205,7 +210,7 @@ export default class BraintreePaypalButtonStrategy implements CheckoutButtonStra
         };
     }
 
-    private _mapToBraintreeAddress(address: Address): BraintreeAddress {
+    private _mapToBraintreeAddress(address: Address): BraintreeShippingAddressOverride {
         return {
             line1: address.address1,
             line2: address.address2,

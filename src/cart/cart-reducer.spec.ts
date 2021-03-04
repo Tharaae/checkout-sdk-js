@@ -1,8 +1,7 @@
-import { BillingAddressActionType } from '../billing/billing-address-actions';
+import { BillingAddressActionType } from '../billing';
 import { CheckoutActionType } from '../checkout';
 import { getCheckout } from '../checkout/checkouts.mock';
-import { CouponActionType } from '../coupon/coupon-actions';
-import { GiftCertificateActionType } from '../coupon/gift-certificate-actions';
+import { CouponActionType, GiftCertificateActionType } from '../coupon';
 import { ConsignmentActionType } from '../shipping';
 
 import cartReducer from './cart-reducer';
@@ -96,6 +95,17 @@ describe('cartReducer()', () => {
     it('returns new data when a shipping option is updated', () => {
         const action = {
             type: ConsignmentActionType.UpdateShippingOptionSucceeded,
+            payload: getCheckout(),
+        };
+
+        expect(cartReducer(initialState, action)).toEqual(expect.objectContaining({
+            data: getCart(),
+        }));
+    });
+
+    it('returns new data when shipping options are loaded', () => {
+        const action = {
+            type: ConsignmentActionType.LoadShippingOptionsSucceeded,
             payload: getCheckout(),
         };
 

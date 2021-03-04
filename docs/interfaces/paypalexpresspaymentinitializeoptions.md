@@ -1,27 +1,40 @@
-[@bigcommerce/checkout-sdk](../README.md) > [PaypalExpressPaymentInitializeOptions](../interfaces/paypalexpresspaymentinitializeoptions.md)
+[@bigcommerce/checkout-sdk](../README.md) › [PaypalExpressPaymentInitializeOptions](paypalexpresspaymentinitializeoptions.md)
 
-# PaypalExpressPaymentInitializeOptions
+# Interface: PaypalExpressPaymentInitializeOptions
+
+A set of options that are required to initialize the PayPal Express payment
+method.
+
+```js
+service.initializePayment({
+    methodId: 'paypalexpress',
+});
+```
+
+An additional flag can be passed in to always start the payment flow through
+a redirect rather than a popup.
+
+```js
+service.initializePayment({
+    methodId: 'paypalexpress',
+    paypalexpress: {
+        useRedirectFlow: true,
+    },
+});
+```
 
 ## Hierarchy
 
-**PaypalExpressPaymentInitializeOptions**
+* **PaypalExpressPaymentInitializeOptions**
 
 ## Index
 
 ### Properties
 
-* [useRedirectFlow](paypalexpresspaymentinitializeoptions.md#useredirectflow)
-
----
+* [useRedirectFlow](paypalexpresspaymentinitializeoptions.md#optional-useredirectflow)
 
 ## Properties
 
-<a id="useredirectflow"></a>
+### `Optional` useRedirectFlow
 
-### `<Optional>` useRedirectFlow
-
-**● useRedirectFlow**: * `undefined` &#124; `false` &#124; `true`
-*
-
-___
-
+• **useRedirectFlow**? : *undefined | false | true*

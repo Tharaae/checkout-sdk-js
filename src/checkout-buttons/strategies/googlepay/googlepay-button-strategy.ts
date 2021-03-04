@@ -4,6 +4,7 @@ import { CheckoutActionCreator, CheckoutStore } from '../../../checkout';
 import { InvalidArgumentError, NotInitializedError, NotInitializedErrorType } from '../../../common/error/errors';
 import { bindDecorator as bind } from '../../../common/utility';
 import { GooglePayPaymentProcessor } from '../../../payment/strategies/googlepay';
+import { getShippableItemsCount } from '../../../shipping';
 import { CheckoutButtonInitializeOptions } from '../../checkout-button-options';
 import CheckoutButtonStrategy from '../checkout-button-strategy';
 
@@ -18,7 +19,7 @@ export default class GooglePayButtonStrategy implements CheckoutButtonStrategy {
         private _googlePayPaymentProcessor: GooglePayPaymentProcessor
     ) {}
 
-    initialize(options: CheckoutButtonInitializeOptions): Promise<void> {
+    async initialize(options: CheckoutButtonInitializeOptions): Promise<void> {
         const { containerId, methodId } = options;
 
         if (!containerId || !methodId) {
@@ -27,11 +28,10 @@ export default class GooglePayButtonStrategy implements CheckoutButtonStrategy {
 
         this._methodId = methodId;
 
-        return this._store.dispatch(this._checkoutActionCreator.loadDefaultCheckout())
-            .then(() => this._googlePayPaymentProcessor.initialize(this._getMethodId()))
-            .then(() => {
-                this._walletButton = this._createSignInButton(containerId);
-            });
+        await this._store.dispatch(this._checkoutActionCreator.loadDefaultCheckout());
+        await this._googlePayPaymentProcessor.initialize(this._getMethodId());
+
+        this._walletButton = this._createSignInButton(containerId);
     }
 
     deinitialize(): Promise<void> {
@@ -66,18 +66,23 @@ export default class GooglePayButtonStrategy implements CheckoutButtonStrategy {
     }
 
     @bind
-    private _handleWalletButtonClick(event: Event): Promise<void> {
+    private async _handleWalletButtonClick(event: Event): Promise<void> {
         event.preventDefault();
+        const cart = this._store.getState().cart.getCartOrThrow();
+        const hasPhysicalItems = getShippableItemsCount(cart) > 0;
 
-        return this._googlePayPaymentProcessor.displayWallet()
-            .then(paymentData => this._googlePayPaymentProcessor.handleSuccess(paymentData)
-            .then(() => {
-                if (paymentData.shippingAddress) {
-                    this._googlePayPaymentProcessor.updateShippingAddress(paymentData.shippingAddress);
-                }
-            }))
-            .then(() => this._onPaymentSelectComplete())
-            .catch(error => this._onError(error));
+        try {
+            const paymentData = await this._googlePayPaymentProcessor.displayWallet();
+            await this._googlePayPaymentProcessor.handleSuccess(paymentData);
+            if (hasPhysicalItems && paymentData.shippingAddress) {
+                await this._googlePayPaymentProcessor.updateShippingAddress(paymentData.shippingAddress);
+            }
+            await this._onPaymentSelectComplete();
+        } catch (error) {
+            if (error && error.message !== 'CANCELED') {
+                throw error;
+            }
+        }
     }
 
     private _onPaymentSelectComplete(): void {
@@ -87,11 +92,5 @@ export default class GooglePayButtonStrategy implements CheckoutButtonStrategy {
                 'Content-Type': 'application/x-www-form-urlencoded',
             },
         });
-    }
-
-    private _onError(error?: Error): void {
-        if (error && error.message !== 'CANCELED') {
-            throw error;
-        }
     }
 }

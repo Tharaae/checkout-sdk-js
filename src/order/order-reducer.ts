@@ -6,7 +6,6 @@ import { objectMerge, objectSet } from '../common/utility';
 
 import { OrderAction, OrderActionType } from './order-actions';
 import OrderState, { DEFAULT_STATE, OrderDataState, OrderErrorsState, OrderMetaState, OrderStatusesState } from './order-state';
-import { SpamProtectionAction, SpamProtectionActionType } from './spam-protection';
 
 export default function orderReducer(
     state: OrderState = DEFAULT_STATE,
@@ -38,7 +37,7 @@ function dataReducer(
 
 function metaReducer(
     meta: OrderMetaState | undefined,
-    action: OrderAction | SpamProtectionAction
+    action: OrderAction
 ): OrderMetaState | undefined {
     switch (action.type) {
     case OrderActionType.FinalizeOrderSucceeded:
@@ -49,9 +48,6 @@ function metaReducer(
             orderToken: action.payload && action.payload.order.token,
             payment: action.payload && action.payload.order && action.payload.order.payment,
         });
-
-    case SpamProtectionActionType.Completed:
-        return objectSet(meta, 'spamProtectionToken', action.payload);
 
     default:
         return meta;

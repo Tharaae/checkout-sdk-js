@@ -9,7 +9,6 @@ import { FinalizeOrderAction, LoadOrderAction, LoadOrderPaymentsAction, OrderAct
 import orderReducer from './order-reducer';
 import OrderState from './order-state';
 import { getOrder } from './orders.mock';
-import { SpamProtectionAction, SpamProtectionActionType } from './spam-protection';
 
 describe('orderReducer()', () => {
     let initialState: OrderState;
@@ -92,19 +91,6 @@ describe('orderReducer()', () => {
             meta: {
                 // tslint:disable-next-line:no-non-null-assertion
                 payment: action.payload!.order.payment,
-            },
-        }));
-    });
-
-    it('returns new data if spam protection completed successfully', () => {
-        const action: SpamProtectionAction = {
-            type: SpamProtectionActionType.Completed,
-            payload: 'spamProtectionToken',
-        };
-
-        expect(orderReducer(initialState, action)).toEqual(expect.objectContaining({
-            meta: {
-                spamProtectionToken: action.payload,
             },
         }));
     });

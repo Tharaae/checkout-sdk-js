@@ -4,12 +4,7 @@ import { getErrorResponse } from '../../common/http-request/responses.mock';
 import { InstrumentAction, InstrumentActionType } from './instrument-actions';
 import instrumentReducer from './instrument-reducer';
 import InstrumentState from './instrument-state';
-import {
-    deleteInstrumentResponseBody,
-    getInstruments,
-    getInstrumentsMeta,
-    getLoadInstrumentsResponseBody,
-} from './instrument.mock';
+import { deleteInstrumentResponseBody, getInstruments, getInstrumentsMeta, getLoadInstrumentsResponseBody } from './instrument.mock';
 
 describe('instrumentReducer()', () => {
     let initialState: InstrumentState;
@@ -95,7 +90,7 @@ describe('instrumentReducer()', () => {
 
         expect(instrumentReducer(initialState, action)).toEqual({
             ...initialState,
-            data: [initialInstruments[1]],
+            data: initialInstruments,
             meta: action.meta,
             errors: { deleteError: undefined },
             statuses: {

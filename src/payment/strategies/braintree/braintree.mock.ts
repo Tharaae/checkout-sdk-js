@@ -1,20 +1,7 @@
 import { OrderPaymentRequestBody } from '../../../order';
 import { getOrderRequestBody } from '../../../order/internal-orders.mock';
 
-import {
-    BraintreeClient,
-    BraintreeDataCollector,
-    BraintreeModule,
-    BraintreeModuleCreator,
-    BraintreePaypalCheckout,
-    BraintreeRequestData,
-    BraintreeThreeDSecure,
-    BraintreeTokenizePayload,
-    BraintreeTokenizeResponse,
-    BraintreeVerifyPayload,
-    BraintreeVisaCheckout,
-    GooglePayBraintreeSDK,
-} from './braintree';
+import { BraintreeClient, BraintreeDataCollector, BraintreeHostedFields, BraintreeModule, BraintreeModuleCreator, BraintreePaypalCheckout, BraintreeRequestData, BraintreeShippingAddressOverride, BraintreeThreeDSecure, BraintreeTokenizePayload, BraintreeTokenizeResponse, BraintreeVerifyPayload, BraintreeVisaCheckout, GooglePayBraintreeSDK } from './braintree';
 import { BraintreeThreeDSecureOptions } from './braintree-payment-options';
 
 export function getClientMock(): BraintreeClient {
@@ -56,6 +43,14 @@ export function getPaypalCheckoutMock(): BraintreePaypalCheckout {
         createPayment: jest.fn((() => Promise.resolve())),
         teardown: jest.fn(),
         tokenizePayment: jest.fn(() => Promise.resolve(getTokenizePayload())),
+    };
+}
+
+export function getHostedFieldsMock(): BraintreeHostedFields {
+    return {
+        teardown: jest.fn(() => Promise.resolve()),
+        tokenize: jest.fn(() => Promise.resolve(getTokenizePayload())),
+        on: jest.fn(),
     };
 }
 
@@ -117,7 +112,6 @@ export function getTokenizePayload(): BraintreeTokenizePayload {
                 state: 'Arizona',
                 countryCode: 'US',
                 postalCode: '96666',
-                phone: '123456789',
             },
             shippingAddress: {
                 recipientName: 'Hello World',
@@ -127,7 +121,6 @@ export function getTokenizePayload(): BraintreeTokenizePayload {
                 state: 'California',
                 countryCode: 'US',
                 postalCode: '95555',
-                phone: '987654321',
             },
         },
     };
@@ -138,13 +131,15 @@ export function getBraintreeRequestData(): BraintreeRequestData {
         data: {
             creditCard: {
                 billingAddress: {
+                    countryCodeAlpha2: 'US',
+                    locality: 'Some City',
                     countryName: 'United States',
                     postalCode: '95555',
                     streetAddress: '12345 Testing Way',
                 },
                 cardholderName: 'BigCommerce',
                 cvv: '123',
-                expirationDate: '10/20',
+                expirationDate: '10/2020',
                 number: '4111111111111111',
                 options: {
                     validate: false,
@@ -160,6 +155,19 @@ export function getBraintreePaymentData(): OrderPaymentRequestBody {
     return {
         ...getOrderRequestBody().payment,
         methodId: 'braintree',
+    };
+}
+
+export function getBraintreeAddress(): BraintreeShippingAddressOverride {
+    return {
+        line1: '12345 Testing Way',
+        line2: '',
+        city: 'Some City',
+        state: 'CA',
+        countryCode: 'US',
+        postalCode: '95555',
+        phone: '555-555-5555',
+        recipientName: 'Test Tester',
     };
 }
 

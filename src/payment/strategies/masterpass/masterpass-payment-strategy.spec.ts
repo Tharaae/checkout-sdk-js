@@ -4,19 +4,16 @@ import { createRequestSender } from '@bigcommerce/request-sender';
 import { createScriptLoader } from '@bigcommerce/script-loader';
 import { of, Observable } from 'rxjs';
 
-import {
-    PaymentActionCreator, PaymentInitializeOptions,
-    PaymentMethod,
-    PaymentRequestSender
-} from '../../';
 import { getCartState } from '../../../cart/carts.mock';
 import { createCheckoutStore, CheckoutRequestSender, CheckoutStore, CheckoutValidator } from '../../../checkout';
 import { getCheckoutState } from '../../../checkout/checkouts.mock';
 import { getConfigState } from '../../../config/configs.mock';
 import { getCustomerState } from '../../../customer/customers.mock';
+import { getFormFieldsState } from '../../../form/form.mock';
 import { OrderActionCreator, OrderActionType, OrderRequestBody, OrderRequestSender } from '../../../order';
 import { OrderFinalizationNotRequiredError } from '../../../order/errors';
-import { createSpamProtection, SpamProtectionActionCreator } from '../../../order/spam-protection';
+import { PaymentActionCreator, PaymentInitializeOptions, PaymentMethod, PaymentRequestSender } from '../../../payment';
+import { createSpamProtection, PaymentHumanVerificationHandler } from '../../../spam-protection';
 import { PaymentActionType } from '../../payment-actions';
 import { getMasterpass, getPaymentMethodsState } from '../../payment-methods.mock';
 import PaymentRequestTransformer from '../../payment-request-transformer';
@@ -51,6 +48,7 @@ describe('MasterpassPaymentStrategy', () => {
             config: getConfigState(),
             customer: getCustomerState(),
             cart: getCartState(),
+            formFields: getFormFieldsState(),
             paymentMethods: getPaymentMethodsState(),
         });
 
@@ -61,13 +59,13 @@ describe('MasterpassPaymentStrategy', () => {
         jest.spyOn(store.getState().paymentMethods, 'getPaymentMethod').mockReturnValue(paymentMethodMock);
 
         const checkoutValidator = new CheckoutValidator(new CheckoutRequestSender(createRequestSender()));
-        const spamProtectionActionCreator = new SpamProtectionActionCreator(createSpamProtection(createScriptLoader()));
-        orderActionCreator = new OrderActionCreator(orderRequestSender, checkoutValidator, spamProtectionActionCreator);
+        orderActionCreator = new OrderActionCreator(orderRequestSender, checkoutValidator);
         const paymentRequestSender = new PaymentRequestSender(createPaymentClient());
         paymentActionCreator = new PaymentActionCreator(
             paymentRequestSender,
             orderActionCreator,
-            new PaymentRequestTransformer()
+            new PaymentRequestTransformer(),
+            new PaymentHumanVerificationHandler(createSpamProtection(createScriptLoader()))
         );
 
         scriptLoader = new MasterpassScriptLoader(createScriptLoader());
@@ -93,6 +91,9 @@ describe('MasterpassPaymentStrategy', () => {
 
         it('throws an exception if masterpass options is not passed', () => {
             initOptions.masterpass = undefined;
+            paymentMethodMock.initializationData = {
+                checkoutId: 'checkout-id',
+            };
             const error = 'Unable to initialize payment because "options.masterpass" argument is not provided.';
 
             return expect(strategy.initialize(initOptions)).rejects.toThrow(error);
@@ -104,7 +105,7 @@ describe('MasterpassPaymentStrategy', () => {
 
             beforeEach(() => {
                 paymentMethodMock.initializationData = {
-                    allowedCardTypes: ['visa', 'amex', 'mastercard'],
+                    allowedCardTypes: ['visa', 'amex', 'master'],
                     checkoutId: 'checkout-id',
                 };
 
@@ -112,13 +113,12 @@ describe('MasterpassPaymentStrategy', () => {
                     allowedCardTypes: [
                         'visa',
                         'amex',
-                        'mastercard',
+                        'master',
                     ],
                     amount: '190.00',
                     cartId: 'b20deef40f9699e48671bbc3fef6ca44dc80e3c7',
                     checkoutId: 'checkout-id',
                     currency: 'USD',
-                    suppressShippingAddress: false,
                     callbackUrl: getCallbackUrlMock(),
                 };
 
@@ -128,7 +128,7 @@ describe('MasterpassPaymentStrategy', () => {
 
             it('loads the script and calls the checkout when the wallet button is clicked', async () => {
                 await strategy.initialize(initOptions);
-                expect(scriptLoader.load).toHaveBeenLastCalledWith(false);
+                expect(scriptLoader.load).toHaveBeenLastCalledWith(false, 'en_US', 'checkout-id');
                 walletButton.click();
                 expect(masterpassScript.checkout).toHaveBeenCalledWith(payload);
             });
@@ -136,7 +136,7 @@ describe('MasterpassPaymentStrategy', () => {
             it('loads the script in test mode, and calls the checkout when the wallet button is clicked', async () => {
                 paymentMethodMock.config.testMode = true;
                 await strategy.initialize(initOptions);
-                expect(scriptLoader.load).toHaveBeenLastCalledWith(true);
+                expect(scriptLoader.load).toHaveBeenLastCalledWith(true, 'en_US', 'checkout-id');
                 walletButton.click();
                 expect(masterpassScript.checkout).toHaveBeenCalled();
             });
@@ -145,7 +145,7 @@ describe('MasterpassPaymentStrategy', () => {
                 paymentMethodMock.config.testMode = true;
                 initOptions.masterpass = {};
                 await strategy.initialize(initOptions);
-                expect(scriptLoader.load).toHaveBeenLastCalledWith(true);
+                expect(scriptLoader.load).toHaveBeenLastCalledWith(true, 'en_US', 'checkout-id');
                 walletButton.click();
                 expect(masterpassScript.checkout).not.toHaveBeenCalled();
             });

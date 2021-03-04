@@ -1,7 +1,5 @@
 # @bigcommerce/checkout-sdk
 
-[![CircleCI](https://circleci.com/gh/bigcommerce/checkout-sdk-js/tree/master.svg?style=svg)](https://circleci.com/gh/bigcommerce/checkout-sdk-js/tree/master)
-
 Checkout JS SDK provides you with the tools you need to build your own checkout solution for a BigCommerce store.
 
 The SDK has a convenient application interface for starting and completing a checkout flow. Behind the interface, it handles all the necessary interactions with our Storefront APIs and other payment SDKs. So you can focus on creating a checkout experience that is unique to your business.
@@ -11,6 +9,8 @@ The SDK has a convenient application interface for starting and completing a che
 - [Features](#features)
 - [Getting started](#getting-started)
 - [Installation](#installation)
+    - [Using NPM package](#using-npm-package)
+    - [Using CDN URL](#using-cdn-url)
 - [Requirements](#requirements)
     - [Browser support](#browser-support)
     - [Framework](#framework)
@@ -19,12 +19,14 @@ The SDK has a convenient application interface for starting and completing a che
     - [Initialize instance](#initialize-instance)
         - [Load checkout](#load-checkout)
     - [Sign in customer](#sign-in-customer)
+        - [Passwordless Sign-in](#passwordless-sign-in)
+    - [Continue as guest](#continue-as-guest)
     - [Set shipping details](#set-shipping-details)
         - [Set shipping address](#set-shipping-address)
         - [Set shipping option](#set-shipping-option)
     - [Set billing details](#set-billing-details)
     - [Apply coupon or gift certificate](#apply-coupon-or-gift-certificate)
-    - [Initialize spam protection](#initialize-spam-protection)
+    - [Execute spam protection check](#execute-spam-protection-check)
     - [Submit payment and order](#submit-payment-and-order)
         - [Load payment methods](#load-payment-methods)
         - [Initialize payment method](#initialize-payment-method)
@@ -33,6 +35,7 @@ The SDK has a convenient application interface for starting and completing a che
     - [Load order](#load-order)
     - [Subscribe to changes](#subscribe-to-changes)
     - [Cancel requests](#cancel-requests)
+- [FAQs](FAQS.md)
 - [API reference](#api-reference)
 - [See also](#see-also)
 - [Notes](#notes)
@@ -55,17 +58,19 @@ The library also provides integrations with all the payment methods supported by
 * Klarna
 * AfterPay
 
-Using this library in conjunction with your favorite UI framework, it is possible to build a bespoke checkout UI for a store, that can be augmented with additional features. We provide a basic [reference implementation](https://github.com/bigcommerce/checkout-sdk-js-example) of a custom checkout written in React to get you started.
+Using this library in conjunction with your favorite UI framework, it is possible to build a bespoke checkout UI for a store, that can be augmented with additional features. We provide a basic [reference implementation](https://github.com/bigcommerce/checkout-sdk-js-example) of a custom checkout written in React to get you started. **Please note that this reference implementation is not production ready.**
 
 
 ## Getting started
 
 The Checkout JS SDK is the easiest way to build a bespoke checkout into your store’s theme. We have created the following tutorials to help you get started.
-* [Build with vanilla JS](https://developer.bigcommerce.com/stencil-docs/template-files/customize-stencil-checkout/checkout-js-sdk/getting-started-in-vanilla-js) - This tutorial will walk through the first steps for building a custom checkout directly into the theme files using vanilla JS.
-* [Run example app in Cornerstone](https://developer.bigcommerce.com/stencil-docs/template-files/customize-stencil-checkout/checkout-js-sdk/implement-a-custom-checkout) - This tutorial will take you through the steps to integrate the custom checkout provided by our reference implementation into the Cornerstone theme.
+* [Checkout SDK Quickstart](https://developer.bigcommerce.com/stencil-docs/customizing-checkout/checkout-sdk-quickstart) - This tutorial will walk through the first steps for building a custom checkout by installing the Checkout JS SDK and initial theme setup.
+* [Checkout SDK Tutorial](https://developer.bigcommerce.com/stencil-docs/customizing-checkout/checkout-sdk-example) - This tutorial will take you through the steps to integrate the custom checkout provided by our reference implementation into the Cornerstone theme.
 
 
 ## Installation
+
+### Using NPM package
 
 You can install this library using [npm](https://www.npmjs.com/get-npm).
 
@@ -73,12 +78,38 @@ You can install this library using [npm](https://www.npmjs.com/get-npm).
 npm install --save @bigcommerce/checkout-sdk
 ```
 
+### Using CDN URL
+
+You can also use this library by referencing a CDN URL.
+
+```
+https://checkout-sdk.bigcommerce.com/v1/loader.js
+```
+
+The main benefit of using the script URL above is that your application can automatically receive backward compatible updates and bug fixes from us, without having to manually perform an upgrade.
+
+Once the above script is loaded, `checkoutKitLoader` instance will be available in the `window` and you can use it to load the module that you need for your application. i.e.:
+
+```js
+const module = await checkoutKitLoader.load('checkout-sdk');
+const service = module.createCheckoutService();
+```
+
+Currently, there are three modules available for public use:
+* **checkout-sdk**: This is the main module that contains all the public exports of the package.
+* **checkout-button**: This sub-module can be used to initialize checkout buttons in the storefront once a cart is created (i.e.: cart page).
+* **embedded-checkout**: This sub-module can be used to embed our Optimized One-Page Checkout in non-native storefronts (i.e.: Wordpress).
+
+Please refer to the usage guide below for more information on each of them.
+
 
 ## Requirements
 
 ### Browser support
 
 We release the library in ES5 so you don't have to do additional transpilation in order to use it. However, you do require the [Promise polyfill](https://github.com/stefanpenner/es6-promise) if you need to support older browsers, such as IE11.
+
+On the other hand, the CDN version already contains the necessary polyfill for it to work in IE11.
 
 ### Framework
 
@@ -148,6 +179,24 @@ const state = await service.continueAsGuest({ email: 'foo@bar.com' });
 console.log(state.data.getCart().email);
 console.log(state.data.getBillingAddress().email);
 ```
+
+#### Passwordless Sign-in
+Customers could sign in using a single-use link sent to their email address. Once they click on the link, they will be redirected back to the store as a signed-in user.
+
+Learn more about it at [CheckoutService#sendSignInEmail](docs/classes/checkoutservice.md#sendSignInEmail)
+
+### Continue as guest
+
+If your checkout settings allow it, your customers could continue the checkout as guests (without signing in).
+
+```js
+const state = await service.continueAsGuest({ email: 'foo@bar.com' });
+
+console.log(state.data.getBillingAddress());
+console.log(state.data.getCustomer());
+```
+
+Learn more about it at [CheckoutService#continueAsGuest](docs/classes/checkoutservice.md#continueasguest)
 
 ### Set shipping details
 
@@ -230,13 +279,15 @@ await service.removeCoupon('COUPON');
 await service.removeGiftCertificate('GIFT');
 ```
 
-### Initialize spam protection
+### Execute spam protection check
 
 You can also enable bot protection to prevent bots and other types of automated abuse from creating orders. Note that enabling this feature increases checkout friction, which may affect conversions. As such, we recommend leaving this feature out if your store is not encountering bots.
 
 ```js
-await service.initializeSpamProtection({ containerId: 'spamProtectionContainer' });
+await service.executeSpamCheck();
 ```
+
+Learn more about it at [CheckoutService#executeSpamCheck](docs/classes/checkoutservice.md#executespamcheck).
 
 ### Submit payment and order
 
@@ -272,6 +323,8 @@ await service.initializePayment({
 #### Submit order
 
 And then, you can ask the customer to provide payment details required by their chosen payment method. If the method is executed successfully, you will create an order and thereby complete the checkout process.
+
+We may require human verification to be completed before payment can be processed, which will be handled during this step.
 
 ```js
 const payment = {
@@ -383,7 +436,16 @@ timeout.complete(); // Aborts the update
 
 ## API reference
 
-You can learn more about the API by reading the [API reference](docs/README.md).
+We provide an extensive [API reference](docs/README.md).
+
+The functions provided by the SDK are:
+* [createCheckoutService](docs/README.md#createcheckoutservice)
+* [createCheckoutButtonInitializer](docs/README.md#createcheckoutbuttoninitializer)
+* [createEmbeddedCheckoutMessenger](docs/README.md#createembeddedcheckoutmessenger)
+* [createLanguageService](docs/README.md#createlanguageservice)
+* [createCurrencyService](docs/README.md#createcurrencyservice)
+* [createStepTracker](docs/README.md#createsteptracker)
+* [embedCheckout](docs/README.md#embedcheckout)
 
 
 ## See also

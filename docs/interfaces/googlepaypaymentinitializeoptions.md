@@ -1,69 +1,93 @@
-[@bigcommerce/checkout-sdk](../README.md) > [GooglePayPaymentInitializeOptions](../interfaces/googlepaypaymentinitializeoptions.md)
+[@bigcommerce/checkout-sdk](../README.md) › [GooglePayPaymentInitializeOptions](googlepaypaymentinitializeoptions.md)
 
-# GooglePayPaymentInitializeOptions
+# Interface: GooglePayPaymentInitializeOptions
 
 A set of options that are required to initialize the GooglePay payment method
 
-If the customer chooses to pay with GooglePay, they will be asked to enter their payment details via a modal. You can hook into events emitted by the modal by providing the callbacks listed below.
+If the customer chooses to pay with GooglePay, they will be asked to
+enter their payment details via a modal. You can hook into events emitted by
+the modal by providing the callbacks listed below.
+
+```html
+<!-- This is where the GooglePay button will be inserted -->
+<div id="wallet-button"></div>
+```
+
+```js
+service.initializePayment({
+    // Using GooglePay provided by Braintree as an example
+    methodId: 'googlepaybraintree',
+    googlepaybraintree: {
+        walletButton: 'wallet-button'
+    },
+});
+```
+
+Additional event callbacks can be registered.
+
+```js
+service.initializePayment({
+    methodId: 'googlepaybraintree',
+    googlepaybraintree: {
+        walletButton: 'wallet-button',
+        onError(error) {
+            console.log(error);
+        },
+        onPaymentSelect() {
+            console.log('Selected');
+        },
+    },
+});
+```
 
 ## Hierarchy
 
-**GooglePayPaymentInitializeOptions**
+* **GooglePayPaymentInitializeOptions**
 
 ## Index
 
 ### Properties
 
-* [walletButton](googlepaypaymentinitializeoptions.md#walletbutton)
+* [walletButton](googlepaypaymentinitializeoptions.md#optional-walletbutton)
 
 ### Methods
 
-* [onError](googlepaypaymentinitializeoptions.md#onerror)
-* [onPaymentSelect](googlepaypaymentinitializeoptions.md#onpaymentselect)
-
----
+* [onError](googlepaypaymentinitializeoptions.md#optional-onerror)
+* [onPaymentSelect](googlepaypaymentinitializeoptions.md#optional-onpaymentselect)
 
 ## Properties
 
-<a id="walletbutton"></a>
+### `Optional` walletButton
 
-### `<Optional>` walletButton
+• **walletButton**? : *undefined | string*
 
-**● walletButton**: * `undefined` &#124; `string`
-*
-
-This walletButton is used to set an event listener, provide an element ID if you want users to be able to launch the GooglePay wallet modal by clicking on a button. It should be an HTML element.
-
-___
+This walletButton is used to set an event listener, provide an element ID if you want
+users to be able to launch the GooglePay wallet modal by clicking on a button.
+It should be an HTML element.
 
 ## Methods
 
-<a id="onerror"></a>
+### `Optional` onError
 
-### `<Optional>` onError
+▸ **onError**(`error`: [Error](amazonpaywidgeterror.md#error)): *void*
 
-▸ **onError**(error: *`Error`*): `void`
-
-A callback that gets called when GooglePay fails to initialize or selects a payment option.
+A callback that gets called when GooglePay fails to initialize or
+selects a payment option.
 
 **Parameters:**
 
-| Param | Type | Description |
-| ------ | ------ | ------ |
-| error | `Error` |  The error object describing the failure. |
+Name | Type | Description |
+------ | ------ | ------ |
+`error` | [Error](amazonpaywidgeterror.md#error) | The error object describing the failure.  |
 
-**Returns:** `void`
+**Returns:** *void*
 
 ___
-<a id="onpaymentselect"></a>
 
-### `<Optional>` onPaymentSelect
+### `Optional` onPaymentSelect
 
-▸ **onPaymentSelect**(): `void`
+▸ **onPaymentSelect**(): *void*
 
 A callback that gets called when the customer selects a payment option.
 
-**Returns:** `void`
-
-___
-
+**Returns:** *void*

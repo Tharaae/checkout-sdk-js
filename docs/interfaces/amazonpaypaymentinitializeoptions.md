@@ -1,14 +1,30 @@
-[@bigcommerce/checkout-sdk](../README.md) > [AmazonPayPaymentInitializeOptions](../interfaces/amazonpaypaymentinitializeoptions.md)
+[@bigcommerce/checkout-sdk](../README.md) › [AmazonPayPaymentInitializeOptions](amazonpaypaymentinitializeoptions.md)
 
-# AmazonPayPaymentInitializeOptions
+# Interface: AmazonPayPaymentInitializeOptions
 
-A set of options that are required to initialize the Amazon Pay payment method.
+A set of options that are required to initialize the Amazon Pay payment
+method.
 
-When AmazonPay is initialized, a widget will be inserted into the DOM. The widget has a list of payment options for the customer to choose from.
+When AmazonPay is initialized, a widget will be inserted into the DOM. The
+widget has a list of payment options for the customer to choose from.
+
+```html
+<!-- This is where the widget will be inserted -->
+<div id="container"></div>
+```
+
+```js
+service.initializePayment({
+    methodId: 'amazon',
+    amazon: {
+        container: 'container',
+    },
+});
+```
 
 ## Hierarchy
 
-**AmazonPayPaymentInitializeOptions**
+* **AmazonPayPaymentInitializeOptions**
 
 ## Index
 
@@ -18,75 +34,65 @@ When AmazonPay is initialized, a widget will be inserted into the DOM. The widge
 
 ### Methods
 
-* [onError](amazonpaypaymentinitializeoptions.md#onerror)
-* [onPaymentSelect](amazonpaypaymentinitializeoptions.md#onpaymentselect)
-* [onReady](amazonpaypaymentinitializeoptions.md#onready)
-
----
+* [onError](amazonpaypaymentinitializeoptions.md#optional-onerror)
+* [onPaymentSelect](amazonpaypaymentinitializeoptions.md#optional-onpaymentselect)
+* [onReady](amazonpaypaymentinitializeoptions.md#optional-onready)
 
 ## Properties
 
-<a id="container"></a>
-
 ###  container
 
-**● container**: *`string`*
+• **container**: *string*
 
 The ID of a container which the payment widget should insert into.
 
-___
-
 ## Methods
 
-<a id="onerror"></a>
+### `Optional` onError
 
-### `<Optional>` onError
+▸ **onError**(`error`: [AmazonPayWidgetError](amazonpaywidgeterror.md) | [StandardError](../classes/standarderror.md)): *void*
 
-▸ **onError**(error: * [AmazonPayWidgetError](amazonpaywidgeterror.md) &#124; [StandardError](../classes/standarderror.md)*): `void`
-
-A callback that gets called if unable to initialize the widget or select one of the payment options.
-
-**Parameters:**
-
-| Param | Type | Description |
-| ------ | ------ | ------ |
-| error |  [AmazonPayWidgetError](amazonpaywidgeterror.md) &#124; [StandardError](../classes/standarderror.md)|  The error object describing the failure. |
-
-**Returns:** `void`
-
-___
-<a id="onpaymentselect"></a>
-
-### `<Optional>` onPaymentSelect
-
-▸ **onPaymentSelect**(reference: *[AmazonPayOrderReference](amazonpayorderreference.md)*): `void`
-
-A callback that gets called when the customer selects one of the payment options provided by the widget.
+A callback that gets called if unable to initialize the widget or select
+one of the payment options.
 
 **Parameters:**
 
-| Param | Type | Description |
-| ------ | ------ | ------ |
-| reference | [AmazonPayOrderReference](amazonpayorderreference.md) |  The order reference provided by Amazon. |
+Name | Type | Description |
+------ | ------ | ------ |
+`error` | [AmazonPayWidgetError](amazonpaywidgeterror.md) &#124; [StandardError](../classes/standarderror.md) | The error object describing the failure.  |
 
-**Returns:** `void`
+**Returns:** *void*
 
 ___
-<a id="onready"></a>
 
-### `<Optional>` onReady
+### `Optional` onPaymentSelect
 
-▸ **onReady**(reference: *[AmazonPayOrderReference](amazonpayorderreference.md)*): `void`
+▸ **onPaymentSelect**(`reference`: [AmazonPayOrderReference](amazonpayorderreference.md)): *void*
 
-A callback that gets called when the widget is loaded and ready to be interacted with.
+A callback that gets called when the customer selects one of the payment
+options provided by the widget.
 
 **Parameters:**
 
-| Param | Type | Description |
-| ------ | ------ | ------ |
-| reference | [AmazonPayOrderReference](amazonpayorderreference.md) |  The order reference provided by Amazon. |
+Name | Type | Description |
+------ | ------ | ------ |
+`reference` | [AmazonPayOrderReference](amazonpayorderreference.md) | The order reference provided by Amazon.  |
 
-**Returns:** `void`
+**Returns:** *void*
 
 ___
 
+### `Optional` onReady
+
+▸ **onReady**(`reference`: [AmazonPayOrderReference](amazonpayorderreference.md)): *void*
+
+A callback that gets called when the widget is loaded and ready to be
+interacted with.
+
+**Parameters:**
+
+Name | Type | Description |
+------ | ------ | ------ |
+`reference` | [AmazonPayOrderReference](amazonpayorderreference.md) | The order reference provided by Amazon.  |
+
+**Returns:** *void*

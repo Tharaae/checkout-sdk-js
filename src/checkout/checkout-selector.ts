@@ -2,7 +2,9 @@ import { memoizeOne } from '@bigcommerce/memoize';
 
 import { BillingAddressSelector } from '../billing';
 import { CartSelector } from '../cart';
+import { MissingDataError, MissingDataErrorType } from '../common/error/errors';
 import { createSelector } from '../common/selector';
+import { guard } from '../common/utility';
 import { CouponSelector, GiftCertificateSelector } from '../coupon';
 import { CustomerSelector } from '../customer';
 import { ConsignmentSelector } from '../shipping';
@@ -12,9 +14,11 @@ import CheckoutState, { DEFAULT_STATE } from './checkout-state';
 
 export default interface CheckoutSelector {
     getCheckout(): Checkout | undefined;
+    getCheckoutOrThrow(): Checkout;
     getOutstandingBalance(useStoreCredit?: boolean): number | undefined;
     getLoadError(): Error | undefined;
     getUpdateError(): Error | undefined;
+    isExecutingSpamCheck(): boolean;
     isLoading(): boolean;
     isUpdating(): boolean;
 }
@@ -71,6 +75,13 @@ export function createCheckoutSelectorFactory(): CheckoutSelectorFactory {
         }
     );
 
+    const getCheckoutOrThrow = createSelector(
+        getCheckout,
+        getCheckout => () => {
+            return guard(getCheckout(), () => new MissingDataError(MissingDataErrorType.MissingCheckout));
+        }
+    );
+
     const getOutstandingBalance = createSelector(
         getCheckout,
         getCheckout => (useStoreCredit?: boolean) => {
@@ -95,6 +106,11 @@ export function createCheckoutSelectorFactory(): CheckoutSelectorFactory {
     const getUpdateError = createSelector(
         (state: CheckoutState) => state.errors.updateError,
         error => () => error
+    );
+
+    const isExecutingSpamCheck = createSelector(
+        (state: CheckoutState) => state.statuses.isExecutingSpamCheck,
+        isExecutingSpamCheck => () => isExecutingSpamCheck === true
     );
 
     const isLoading = createSelector(
@@ -125,6 +141,14 @@ export function createCheckoutSelectorFactory(): CheckoutSelectorFactory {
                 customer,
                 giftCertificates,
             }),
+            getCheckoutOrThrow: getCheckoutOrThrow(state, {
+                billingAddress,
+                cart,
+                consignments,
+                coupons,
+                customer,
+                giftCertificates,
+            }),
             getOutstandingBalance: getOutstandingBalance(state, {
                 billingAddress,
                 cart,
@@ -135,6 +159,7 @@ export function createCheckoutSelectorFactory(): CheckoutSelectorFactory {
             }),
             getLoadError: getLoadError(state),
             getUpdateError: getUpdateError(state),
+            isExecutingSpamCheck: isExecutingSpamCheck(state),
             isLoading: isLoading(state),
             isUpdating: isUpdating(state),
         };

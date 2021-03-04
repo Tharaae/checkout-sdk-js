@@ -1,8 +1,11 @@
+import { find, set } from 'lodash';
+
 import { CheckoutStoreState } from '../../checkout';
 import { getCheckoutStoreState } from '../../checkout/checkouts.mock';
+import { getBraintree } from '../payment-methods.mock';
 
 import InstrumentSelector, { createInstrumentSelectorFactory, InstrumentSelectorFactory } from './instrument-selector';
-import { getInstrumentsMeta } from './instrument.mock';
+import { getInstruments, getInstrumentsMeta } from './instrument.mock';
 
 describe('InstrumentSelector', () => {
     let createInstrumentSelector: InstrumentSelectorFactory;
@@ -14,17 +17,68 @@ describe('InstrumentSelector', () => {
         state = getCheckoutStoreState();
     });
 
-    describe('#loadInstruments()', () => {
-        it('returns a list of instruments', () => {
-            instrumentSelector = createInstrumentSelector(state.instruments);
+    describe('#getInstruments()', () => {
+        it('returns only supported instruments if no method is passed', () => {
+            set(state, 'instruments.data[0].provider', 'invalid');
+            set(state, 'instruments.data[0].method', 'card');
 
-            expect(instrumentSelector.getInstruments()).toEqual(state.instruments.data);
+            instrumentSelector = createInstrumentSelector(state.instruments);
+            const result = instrumentSelector.getInstruments();
+
+            expect(result).toContainEqual(expect.objectContaining({ provider: 'authorizenet', last4: expect.any(String) }));
+            expect(result).not.toContainEqual(expect.objectContaining({ provider: 'invalid' }));
         });
 
         it('returns an empty array if there are no instruments', () => {
             instrumentSelector = createInstrumentSelector({ data: [], errors: {}, statuses: {} });
 
             expect(instrumentSelector.getInstruments()).toEqual([]);
+        });
+    });
+
+    describe('#getInstrument()', () => {
+        it('returns instrument with given ID', () => {
+            instrumentSelector = createInstrumentSelector(state.instruments);
+
+            expect(instrumentSelector.getCardInstrument('123'))
+                .toEqual(find(getInstruments(), { bigpayToken: '123' }));
+        });
+
+        it('returns nothing if instrument is not found', () => {
+            instrumentSelector = createInstrumentSelector(state.instruments);
+
+            expect(instrumentSelector.getCardInstrument('1123123312'))
+                .toBeUndefined();
+        });
+
+        it('only returns card instrument', () => {
+            instrumentSelector = createInstrumentSelector(state.instruments);
+
+            // tslint:disable-next-line:no-non-null-assertion
+            expect(instrumentSelector.getCardInstrument(find(getInstruments(), { method: 'paypal' })!.bigpayToken))
+                .toBeUndefined();
+        });
+    });
+
+    describe('#getInstrumentsByPaymentMethod()', () => {
+        it('returns the instruments for a particular method', () => {
+            instrumentSelector = createInstrumentSelector(state.instruments);
+
+            expect(instrumentSelector.getInstrumentsByPaymentMethod(getBraintree()))
+                .toEqual([ expect.objectContaining({ provider: 'braintree', method: 'credit_card' }) ]);
+        });
+
+        it('returns an empty array if the method is not supported', () => {
+            instrumentSelector = createInstrumentSelector(state.instruments);
+
+            expect(instrumentSelector.getInstrumentsByPaymentMethod({ ...getBraintree(), id: 'nonexistent' }))
+                .toEqual([]);
+        });
+
+        it('returns an empty array if there are no instruments', () => {
+            instrumentSelector = createInstrumentSelector({ data: [], errors: {}, statuses: {} });
+
+            expect(instrumentSelector.getInstrumentsByPaymentMethod(getBraintree())).toEqual([]);
         });
     });
 

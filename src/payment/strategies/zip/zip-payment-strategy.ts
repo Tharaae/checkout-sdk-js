@@ -1,16 +1,11 @@
 import { RequestSender, Response } from '@bigcommerce/request-sender';
 
 import { CheckoutStore, InternalCheckoutSelectors } from '../../../checkout';
-import {
-    InvalidArgumentError,
-    MissingDataError,
-    MissingDataErrorType,
-    NotInitializedError,
-    NotInitializedErrorType,
-} from '../../../common/error/errors';
+import { InvalidArgumentError, MissingDataError, MissingDataErrorType, NotInitializedError, NotInitializedErrorType } from '../../../common/error/errors';
 import { ContentType, INTERNAL_USE_ONLY } from '../../../common/http-request';
 import { OrderActionCreator, OrderRequestBody } from '../../../order';
 import { OrderFinalizationNotRequiredError } from '../../../order/errors';
+import { RemoteCheckoutActionCreator } from '../../../remote-checkout';
 import { StoreCreditActionCreator } from '../../../store-credit';
 import { PaymentMethodCancelledError, PaymentMethodDeclinedError, PaymentMethodInvalidError } from '../../errors';
 import PaymentActionCreator from '../../payment-action-creator';
@@ -32,6 +27,7 @@ export default class ZipPaymentStrategy implements PaymentStrategy {
         private _paymentActionCreator: PaymentActionCreator,
         private _paymentMethodActionCreator: PaymentMethodActionCreator,
         private _storeCreditActionCreator: StoreCreditActionCreator,
+        private _remoteCheckoutActionCreator: RemoteCheckoutActionCreator,
         private _zipScriptLoader: ZipScriptLoader,
         private _requestSender: RequestSender
     ) { }
@@ -62,13 +58,14 @@ export default class ZipPaymentStrategy implements PaymentStrategy {
             throw new NotInitializedError(NotInitializedErrorType.PaymentNotInitialized);
         }
 
-        await this._store.dispatch(this._orderActionCreator.submitOrder(order, options));
-
-        const { useStoreCredit } = payload;
+        const { isStoreCreditApplied: useStoreCredit } = this._store.getState().checkout.getCheckoutOrThrow();
 
         if (useStoreCredit !== undefined) {
             await this._store.dispatch(this._storeCreditActionCreator.applyStoreCredit(useStoreCredit));
         }
+
+        await this._store.dispatch(this._orderActionCreator.submitOrder(order, options));
+        await this._store.dispatch(this._remoteCheckoutActionCreator.initializePayment(payment.methodId, { useStoreCredit }));
 
         const state = await this._store.dispatch(this._paymentMethodActionCreator.loadPaymentMethod(payment.methodId, options));
 
@@ -125,7 +122,7 @@ export default class ZipPaymentStrategy implements PaymentStrategy {
         return Promise.reject(new OrderFinalizationNotRequiredError());
     }
 
-    private _prepareForReferredRegistration(provider: string, externalId: string): Promise<Response> {
+    private _prepareForReferredRegistration(provider: string, externalId: string): Promise<Response<any>> {
         const url = `/api/storefront/payment/${provider}/save-external-id`;
         const options = {
             headers: {

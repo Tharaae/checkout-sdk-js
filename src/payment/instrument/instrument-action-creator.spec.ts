@@ -6,6 +6,7 @@ import { catchError, toArray } from 'rxjs/operators';
 import { Address } from '../../address';
 import { createCheckoutStore, CheckoutStore, CheckoutStoreState } from '../../checkout';
 import { getCheckoutStoreState } from '../../checkout/checkouts.mock';
+import { ErrorResponseBody } from '../../common/error';
 import { getErrorResponse, getResponse } from '../../common/http-request/responses.mock';
 import { getConfig, getConfigState } from '../../config/configs.mock';
 import { getShippingAddress } from '../../shipping/shipping-addresses.mock';
@@ -15,13 +16,7 @@ import InstrumentActionCreator from './instrument-action-creator';
 import { InstrumentActionType } from './instrument-actions';
 import InstrumentRequestSender from './instrument-request-sender';
 import { InstrumentsResponseBody } from './instrument-response-body';
-import {
-    deleteInstrumentResponseBody,
-    getInstrumentsMeta,
-    getInstrumentsState,
-    getLoadInstrumentsResponseBody,
-    getVaultAccessToken,
-} from './instrument.mock';
+import { deleteInstrumentResponseBody, getInstrumentsMeta, getInstrumentsState, getLoadInstrumentsResponseBody, getVaultAccessToken } from './instrument.mock';
 
 describe('InstrumentActionCreator', () => {
     const bigpayClient: any = {};
@@ -30,7 +25,7 @@ describe('InstrumentActionCreator', () => {
     let vaultAccessTokenResponse: Response<VaultAccessToken>;
     let loadInstrumentsResponse: Response<InstrumentsResponseBody>;
     let deleteInstrumentResponse: Response<InstrumentsResponseBody>;
-    let errorResponse: Response;
+    let errorResponse: Response<ErrorResponseBody>;
     let state: CheckoutStoreState;
     let store: CheckoutStore;
     let storeId: string;

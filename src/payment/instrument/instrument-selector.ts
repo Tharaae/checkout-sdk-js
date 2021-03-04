@@ -1,25 +1,74 @@
 import { memoizeOne } from '@bigcommerce/memoize';
+import { filter, flatMap, isMatch, values } from 'lodash';
 
 import { createSelector } from '../../common/selector';
+import PaymentMethod from '../payment-method';
 
-import Instrument from './instrument';
+import PaymentInstrument, { CardInstrument } from './instrument';
 import InstrumentState, { DEFAULT_STATE, InstrumentMeta } from './instrument-state';
+import supportedInstruments from './supported-payment-instruments';
 
 export default interface InstrumentSelector {
-    getInstruments(): Instrument[] | undefined;
+    getCardInstrument(instrumentId: string): CardInstrument | undefined;
+    getInstruments(): PaymentInstrument[] | undefined;
+    getInstrumentsByPaymentMethod(paymentMethod: PaymentMethod): PaymentInstrument[] | undefined;
     getInstrumentsMeta(): InstrumentMeta | undefined;
     getLoadError(): Error | undefined;
     getDeleteError(instrumentId?: string): Error | undefined;
-    isLoading(): boolean ;
+    isLoading(): boolean;
     isDeleting(instrumentId?: string): boolean;
 }
 
 export type InstrumentSelectorFactory = (state: InstrumentState) => InstrumentSelector;
 
 export function createInstrumentSelectorFactory(): InstrumentSelectorFactory {
+    const getInstrumentsByPaymentMethod = createSelector(
+        (state: InstrumentState) => state.data,
+        instruments => (paymentMethod: PaymentMethod) => {
+            if (!instruments) {
+                return;
+            }
+
+            const paymentMethodKey = paymentMethod.gateway ? `${paymentMethod.gateway}.${paymentMethod.id}` : paymentMethod.id;
+
+            const currentMethod = supportedInstruments[paymentMethodKey];
+
+            if (!currentMethod) {
+                return [];
+            }
+
+            return filter<PaymentInstrument>(instruments, currentMethod);
+        }
+    );
+
+    const getCardInstrument = createSelector(
+        (state: InstrumentState) => state.data,
+        (instruments = []) => (instrumentId: string) => {
+            const cards = values(supportedInstruments);
+
+            return instruments.find((instrument): instrument is CardInstrument =>
+                instrument.bigpayToken === instrumentId &&
+                instrument.type === 'card' &&
+                cards.some(card => isMatch(instrument, card))
+            );
+        }
+    );
+
     const getInstruments = createSelector(
         (state: InstrumentState) => state.data,
-        instruments => () => instruments
+        instruments => () => {
+            if (!instruments) {
+                return;
+            }
+
+            const allSupportedInstruments = flatMap(supportedInstruments, supportedProvider =>
+                filter(instruments, (instrument: PaymentInstrument): instrument is PaymentInstrument => {
+                    return isMatch(instrument, supportedProvider);
+                })
+            );
+
+            return allSupportedInstruments;
+        }
     );
 
     const getInstrumentsMeta = createSelector(
@@ -65,7 +114,9 @@ export function createInstrumentSelectorFactory(): InstrumentSelectorFactory {
         state: InstrumentState = DEFAULT_STATE
     ): InstrumentSelector => {
         return {
+            getCardInstrument: getCardInstrument(state),
             getInstruments: getInstruments(state),
+            getInstrumentsByPaymentMethod: getInstrumentsByPaymentMethod(state),
             getInstrumentsMeta: getInstrumentsMeta(state),
             getLoadError: getLoadError(state),
             getDeleteError: getDeleteError(state),

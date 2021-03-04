@@ -17,7 +17,6 @@ export interface OrderMetaState extends InternalOrderMeta {
     orderToken?: string;
     callbackUrl?: string;
     payment?: InternalOrderPayment;
-    spamProtectionToken?: string;
 }
 
 export interface OrderErrorsState {

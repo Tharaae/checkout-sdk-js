@@ -7,22 +7,8 @@ import { PaymentMethodFailedError } from '../../errors';
 import { CreditCardInstrument, ThreeDSecureToken, VaultedInstrument } from '../../payment';
 import { ThreeDsResult } from '../../payment-response-body';
 
-import {
-    CardinalAccount,
-    CardinalAddress,
-    CardinalConsumer,
-    CardinalEventType,
-    CardinalInitializationType,
-    CardinalPartialOrder,
-    CardinalPaymentBrand,
-    CardinalScriptLoader,
-    CardinalSignatureValidationErrors,
-    CardinalSignatureVerification,
-    CardinalSDK,
-    CardinalTriggerEvents,
-    CardinalValidatedAction,
-    CardinalValidatedData
-} from './index';
+import { CardinalAccount, CardinalAddress, CardinalConsumer, CardinalEventType, CardinalInitializationType, CardinalPartialOrder, CardinalPaymentBrand, CardinalSignatureValidationErrors, CardinalSignatureVerification, CardinalSDK, CardinalTriggerEvents, CardinalValidatedAction, CardinalValidatedData } from './cardinal';
+import CardinalScriptLoader from './cardinal-script-loader';
 
 export type CardinalSupportedPaymentInstrument = CreditCardInstrument | VaultedInstrument;
 
@@ -36,13 +22,19 @@ export interface CardinalOrderData {
 }
 
 export default class CardinalClient {
+    private _provider: string = '';
+    private _testMode: boolean = false;
     private _sdk?: Promise<CardinalSDK>;
+    private _configurationToken: string = '';
 
     constructor(
         private _scriptLoader: CardinalScriptLoader
     ) {}
 
-    initialize(provider: string, testMode?: boolean): Promise<void> {
+    load(provider: string, testMode = false): Promise<void> {
+        this._provider = provider;
+        this._testMode = testMode;
+
         if (!this._sdk) {
             this._sdk = this._scriptLoader.load(provider, testMode);
         }
@@ -51,11 +43,21 @@ export default class CardinalClient {
     }
 
     configure(clientToken: string): Promise<void> {
+        if (!!this._configurationToken) {
+            if (this._configurationToken === clientToken) {
+                return Promise.resolve();
+            } else {
+                this._sdk = this._scriptLoader.load(`${this._provider}.${Date.now()}`, this._testMode);
+            }
+        }
+
         return this._getClientSDK()
             .then(client => new Promise<void>((resolve, reject) => {
                 client.on(CardinalEventType.SetupCompleted, () => {
                     client.off(CardinalEventType.SetupCompleted);
                     client.off(CardinalEventType.Validated);
+
+                    this._configurationToken = clientToken;
 
                     resolve();
                 });

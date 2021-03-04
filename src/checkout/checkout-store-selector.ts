@@ -1,22 +1,26 @@
 import { memoizeOne } from '@bigcommerce/memoize';
+import { omit, values } from 'lodash';
 
 import { Address } from '../address';
 import { BillingAddress } from '../billing';
 import { Cart } from '../cart';
 import { createSelector } from '../common/selector';
 import { cloneResult as clone } from '../common/utility';
-import { StoreConfig } from '../config/config';
+import { FlashMessage, FlashMessageType, StoreConfig } from '../config';
 import { Coupon, GiftCertificate } from '../coupon';
 import { Customer } from '../customer';
 import { FormField } from '../form';
 import { Country } from '../geography';
 import { Order } from '../order';
 import { PaymentMethod } from '../payment';
-import { Instrument } from '../payment/instrument';
+import { CardInstrument, PaymentInstrument } from '../payment/instrument';
 import { Consignment, ShippingOption } from '../shipping';
+import { SignInEmail } from '../signin-email';
 
 import Checkout from './checkout';
 import InternalCheckoutSelectors from './internal-checkout-selectors';
+
+export type Instrument = CardInstrument;
 
 /**
  * Responsible for getting the state of the current checkout.
@@ -45,6 +49,13 @@ export default interface CheckoutStoreSelector {
      * @returns The configuration object if it is loaded, otherwise undefined.
      */
     getConfig(): StoreConfig | undefined;
+
+    /**
+     * Gets the sign-in email.
+     *
+     * @returns The sign-in email object if sent, otherwise undefined
+     */
+    getSignInEmail(): SignInEmail | undefined;
 
     /**
      * Gets the shipping address of the current checkout.
@@ -137,6 +148,17 @@ export default interface CheckoutStoreSelector {
     getSelectedPaymentMethod(): PaymentMethod | undefined;
 
     /**
+     * Gets the available flash messages.
+     *
+     * Flash messages contain messages set by the server,
+     * e.g: when trying to sign in using an invalid email link.
+     *
+     * @param type - The type of flash messages to be returned. Optional
+     * @returns The flash messages if available, otherwise undefined.
+     */
+    getFlashMessages(type?: FlashMessageType): FlashMessage[] | undefined;
+
+    /**
      * Gets the current cart.
      *
      * @returns The current cart object if it is loaded, otherwise undefined.
@@ -204,6 +226,15 @@ export default interface CheckoutStoreSelector {
      * @returns The list of payment instruments if it is loaded, otherwise undefined.
      */
     getInstruments(): Instrument[] | undefined;
+    getInstruments(paymentMethod: PaymentMethod): PaymentInstrument[] | undefined;
+
+    /**
+     * Gets a set of form fields that should be presented in order to create a customer.
+     *
+     * @returns The set of customer account form fields if it is loaded,
+     * otherwise undefined.
+     */
+    getCustomerAccountFields(): FormField[];
 
     /**
      * Gets a set of form fields that should be presented to customers in order
@@ -313,7 +344,40 @@ export function createCheckoutStoreSelectorFactory(): CheckoutStoreSelectorFacto
 
     const getBillingAddress = createSelector(
         ({ billingAddress }: InternalCheckoutSelectors) => billingAddress.getBillingAddress,
-        getBillingAddress => clone(getBillingAddress)
+        ({ config }: InternalCheckoutSelectors) => config.getContextConfig,
+        (getBillingAddress, getContextConfig) => clone(() => {
+            const billingAddress = getBillingAddress();
+            const context = getContextConfig();
+            const isEmptyBillingAddress = !billingAddress ||
+                values(omit(billingAddress, 'shouldSaveAddress', 'email', 'id'))
+                    .every(val => !val || !val.length);
+
+            if (isEmptyBillingAddress) {
+                if (!context || !context.geoCountryCode) {
+                    return billingAddress;
+                }
+
+                return {
+                    id: billingAddress ? billingAddress.id : '',
+                    firstName: '',
+                    lastName: '',
+                    company: '',
+                    address1: '',
+                    address2: '',
+                    city: '',
+                    email: billingAddress ? billingAddress.email : '',
+                    stateOrProvince: '',
+                    stateOrProvinceCode: '',
+                    postalCode: '',
+                    country: '',
+                    phone: '',
+                    customFields: [],
+                    countryCode: context.geoCountryCode,
+                };
+            }
+
+            return billingAddress;
+        })
     );
 
     const getBillingCountries = createSelector(
@@ -361,6 +425,11 @@ export function createCheckoutStoreSelectorFactory(): CheckoutStoreSelectorFacto
         getCustomer => clone(getCustomer)
     );
 
+    const getSignInEmail = createSelector(
+        ({ signInEmail }: InternalCheckoutSelectors) => signInEmail.getEmail,
+        getEmail => clone(getEmail)
+    );
+
     const isPaymentDataRequired = createSelector(
         ({ payment }: InternalCheckoutSelectors) => payment.isPaymentDataRequired,
         isPaymentDataRequired => clone(isPaymentDataRequired)
@@ -376,7 +445,21 @@ export function createCheckoutStoreSelectorFactory(): CheckoutStoreSelectorFacto
 
     const getInstruments = createSelector(
         ({ instruments }: InternalCheckoutSelectors) => instruments.getInstruments,
-        getInstruments => clone(getInstruments)
+        ({ instruments }: InternalCheckoutSelectors) => instruments.getInstrumentsByPaymentMethod,
+        (getInstruments, getInstrumentsByPaymentMethod) => {
+            function getInstrumentsSelector(): Instrument[] | undefined;
+            function getInstrumentsSelector(paymentMethod: PaymentMethod): PaymentInstrument[] | undefined;
+            function getInstrumentsSelector(paymentMethod?: PaymentMethod): PaymentInstrument[] | undefined {
+                return paymentMethod ? getInstrumentsByPaymentMethod(paymentMethod) : getInstruments();
+            }
+
+            return clone(getInstrumentsSelector);
+        }
+    );
+
+    const getCustomerAccountFields = createSelector(
+        ({ form }: InternalCheckoutSelectors) => form.getCustomerAccountFields,
+        getCustomerAccountFields => clone(getCustomerAccountFields)
     );
 
     const getBillingAddressFields = createSelector(
@@ -395,6 +478,11 @@ export function createCheckoutStoreSelectorFactory(): CheckoutStoreSelectorFacto
         })
     );
 
+    const getFlashMessages = createSelector(
+        ({ config }: InternalCheckoutSelectors) => config.getFlashMessages,
+        getFlashMessages => clone(getFlashMessages)
+    );
+
     return memoizeOne((
         state: InternalCheckoutSelectors
     ): CheckoutStoreSelector => {
@@ -402,6 +490,7 @@ export function createCheckoutStoreSelectorFactory(): CheckoutStoreSelectorFacto
             getCheckout: getCheckout(state),
             getOrder: getOrder(state),
             getConfig: getConfig(state),
+            getFlashMessages: getFlashMessages(state),
             getShippingAddress: getShippingAddress(state),
             getShippingOptions: getShippingOptions(state),
             getConsignments: getConsignments(state),
@@ -418,7 +507,9 @@ export function createCheckoutStoreSelectorFactory(): CheckoutStoreSelectorFacto
             getCustomer: getCustomer(state),
             isPaymentDataRequired: isPaymentDataRequired(state),
             isPaymentDataSubmitted: isPaymentDataSubmitted(state),
+            getSignInEmail: getSignInEmail(state),
             getInstruments: getInstruments(state),
+            getCustomerAccountFields: getCustomerAccountFields(state),
             getBillingAddressFields: getBillingAddressFields(state),
             getShippingAddressFields: getShippingAddressFields(state),
         };

@@ -1,16 +1,12 @@
-import { GooglePaymentData, GooglePayCreator, TokenizePayload } from '../googlepay';
-import { GooglePayBraintreeDataRequest, GooglePayBraintreePaymentDataRequestV1 } from '../googlepay/googlepay-braintree';
+import { GooglePaymentData, GooglePayBraintreeDataRequest, GooglePayBraintreePaymentDataRequestV1, GooglePayCreator, TokenizePayload } from '../googlepay';
 import { PaypalAuthorizeData, PaypalSDK } from '../paypal';
 
-import {
-    VisaCheckoutInitOptions,
-    VisaCheckoutPaymentSuccessPayload,
-    VisaCheckoutTokenizedPayload
-} from './visacheckout';
+import { VisaCheckoutInitOptions, VisaCheckoutPaymentSuccessPayload, VisaCheckoutTokenizedPayload } from './visacheckout';
 
 export interface BraintreeSDK {
     client?: BraintreeClientCreator;
     dataCollector?: BraintreeDataCollectorCreator;
+    hostedFields?: BraintreeHostedFieldsCreator;
     paypal?: BraintreePaypalCreator;
     paypalCheckout?: BraintreePaypalCheckoutCreator;
     threeDSecure?: BraintreeThreeDSecureCreator;
@@ -18,20 +14,60 @@ export interface BraintreeSDK {
     googlePayment?: GooglePayCreator;
 }
 
-export interface BraintreeModuleCreator<T> {
-    create(config: BraintreeModuleCreatorConfig): Promise<T>;
+export interface BraintreeModuleCreator<TInstance, TOptions = BraintreeModuleCreatorConfig> {
+    create(config: TOptions): Promise<TInstance>;
 }
 
 export interface BraintreeModuleCreatorConfig {
     client?: BraintreeClient;
     authorization?: string;
+}
+
+export interface BraintreeDataCollectorCreatorConfig extends BraintreeModuleCreatorConfig {
     kount?: boolean;
     paypal?: boolean;
 }
 
-export interface BraintreeClientCreator extends BraintreeModuleCreator<BraintreeClient> {}
-export interface BraintreeDataCollectorCreator extends BraintreeModuleCreator<BraintreeDataCollector> {}
-export interface BraintreeThreeDSecureCreator extends BraintreeModuleCreator<BraintreeThreeDSecure> {}
+export interface BraintreeThreeDSecureCreatorConfig extends BraintreeModuleCreatorConfig {
+    version?: number;
+}
+
+export interface BraintreeHostedFieldsCreatorConfig extends BraintreeModuleCreatorConfig {
+    fields: {
+        number?: BraintreeHostedFieldOption;
+        expirationDate?: BraintreeHostedFieldOption;
+        expirationMonth?: BraintreeHostedFieldOption;
+        expirationYear?: BraintreeHostedFieldOption;
+        cvv?: BraintreeHostedFieldOption;
+        postalCode?: BraintreeHostedFieldOption;
+    };
+    styles?: {
+        input?: { [key: string]: string };
+        '.invalid'?: { [key: string]: string };
+        '.valid'?: { [key: string]: string };
+        ':focus'?: { [key: string]: string };
+    };
+}
+
+export interface BraintreeHostedFieldOption {
+    container: string | HTMLElement;
+    placeholder?: string;
+    type?: string;
+    formatInput?: boolean;
+    maskInput?: boolean | { character?: string; showLastFour?: string };
+    select?: boolean | { options?: string[] };
+    maxCardLength?: number;
+    maxlength?: number;
+    minlength?: number;
+    prefill?: string;
+    rejectUnsupportedCards?: boolean;
+    supportedCardBrands?: { [key: string]: boolean };
+}
+
+export interface BraintreeClientCreator extends BraintreeModuleCreator<BraintreeClient> { }
+export interface BraintreeDataCollectorCreator extends BraintreeModuleCreator<BraintreeDataCollector, BraintreeDataCollectorCreatorConfig> {}
+export interface BraintreeHostedFieldsCreator extends BraintreeModuleCreator<BraintreeHostedFields, BraintreeHostedFieldsCreatorConfig> {}
+export interface BraintreeThreeDSecureCreator extends BraintreeModuleCreator<BraintreeThreeDSecure, BraintreeThreeDSecureCreatorConfig> {}
 export interface BraintreePaypalCreator extends BraintreeModuleCreator<BraintreePaypal> {}
 export interface BraintreePaypalCheckoutCreator extends BraintreeModuleCreator<BraintreePaypalCheckout> {}
 export interface BraintreeVisaCheckoutCreator extends BraintreeModuleCreator<BraintreeVisaCheckout> {}
@@ -46,7 +82,7 @@ export interface BraintreeClient {
 }
 
 export interface BraintreeThreeDSecure extends BraintreeModule {
-    verifyCard(options: BraintreeThreeDSecureOptions): Promise<{ nonce: string }>;
+    verifyCard(options: BraintreeThreeDSecureOptions): Promise<BraintreeVerifyPayload>;
     cancelVerifyCard(): Promise<BraintreeVerifyPayload>;
 }
 
@@ -56,10 +92,97 @@ export interface BraintreeThreeDSecureOptions {
     showLoader?: boolean;
     addFrame(error: Error | undefined, iframe: HTMLIFrameElement): void;
     removeFrame(): void;
+    onLookupComplete(data: BraintreeThreeDSecureVerificationData, next: () => void): void;
 }
 
 export interface BraintreeDataCollector extends BraintreeModule {
     deviceData?: string;
+}
+
+export interface BraintreeHostedFields {
+    teardown(): Promise<void>;
+    tokenize(options?: BraintreeHostedFieldsTokenizeOptions): Promise<BraintreeHostedFieldsTokenizePayload>;
+    on(eventName: string, callback: (event: BraintreeHostedFieldsState) => void): void;
+}
+
+export interface BraintreeHostedFieldsState {
+    cards: BraintreeHostedFieldsCard[];
+    emittedBy: string;
+    fields: {
+        number?: BraintreeHostedFieldsFieldData;
+        expirationDate?: BraintreeHostedFieldsFieldData;
+        expirationMonth?: BraintreeHostedFieldsFieldData;
+        expirationYear?: BraintreeHostedFieldsFieldData;
+        cvv?: BraintreeHostedFieldsFieldData;
+        postalCode?: BraintreeHostedFieldsFieldData;
+    };
+}
+
+export interface BraintreeHostedFieldsCard {
+    type: string;
+    niceType: string;
+    code: { name: string; size: number };
+}
+
+export interface BraintreeHostedFieldsFieldData {
+    container: HTMLElement;
+    isFocused: boolean;
+    isEmpty: boolean;
+    isPotentiallyValid: boolean;
+    isValid: boolean;
+}
+
+export interface BraintreeHostedFieldsTokenizeOptions {
+    vault?: boolean;
+    authenticationInsight?: {
+        merchantAccountId: string;
+    };
+    fieldsToTokenize?: string[];
+    cardholderName?: string;
+    billingAddress?: BraintreeBillingAddressRequestData;
+}
+
+export interface BraintreeHostedFieldsTokenizePayload {
+    nonce: string;
+    authenticationInsight?: {
+        regulationEnvironment: string;
+    };
+    details: {
+        bin: string;
+        cardType: string;
+        expirationMonth: string;
+        expirationYear: string;
+        lastFour: string;
+        lastTwo: string;
+    };
+    description: string;
+    type: string;
+    binData: {
+        commercial: string;
+        countryOfIssuance: string;
+        debit: string;
+        durbinRegulated: string;
+        healthcare: string;
+        issuingBank: string;
+        payroll: string;
+        prepaid: string;
+        productId: string;
+    };
+}
+
+export interface BraintreeBillingAddressRequestData {
+    postalCode?: string;
+    firstName?: string;
+    lastName?: string;
+    company?: string;
+    streetAddress?: string;
+    extendedAddress?: string;
+    locality?: string;
+    region?: string;
+    countryCodeNumeric?: string;
+    countryCodeAlpha2?: string;
+    countryCodeAlpha3?: string;
+    countryName?: string;
 }
 
 export interface BraintreePaypal {
@@ -101,7 +224,9 @@ export interface BraintreeTokenizeResponse {
 export interface BraintreeRequestData {
     data: {
         creditCard: {
-            billingAddress: {
+            billingAddress?: {
+                countryCodeAlpha2: string;
+                locality: string;
                 countryName: string;
                 postalCode: string;
                 streetAddress: string;
@@ -131,11 +256,11 @@ export interface BraintreePaypalRequest {
     locale?: string;
     offerCredit?: boolean;
     shippingAddressEditable?: boolean;
-    shippingAddressOverride?: BraintreeAddress;
+    shippingAddressOverride?: BraintreeShippingAddressOverride;
     useraction?: 'commit';
 }
 
-export interface BraintreeAddress {
+export interface BraintreeShippingAddressOverride {
     line1: string;
     line2?: string;
     city: string;
@@ -144,8 +269,18 @@ export interface BraintreeAddress {
     countryCode: string;
     phone?: string;
     recipientName?: string;
-    firstName?: string;
-    lastName?: string;
+}
+export interface BraintreeAddress {
+    line1: string;
+    line2: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    countryCode: string;
+}
+
+export interface BraintreeShippingAddress extends BraintreeAddress {
+    recipientName: string;
 }
 
 export interface BraintreeTokenizePayload {
@@ -158,7 +293,7 @@ export interface BraintreeTokenizePayload {
         lastName: string;
         countryCode?: string;
         phone?: string;
-        shippingAddress?: BraintreeAddress;
+        shippingAddress?: BraintreeShippingAddress;
         billingAddress?: BraintreeAddress;
     };
     creditFinancingOffered?: {
@@ -195,6 +330,23 @@ export interface BraintreeVerifyPayload {
 export interface BraintreeError extends Error {
     type: 'CUSTOMER' | 'MERCHANT' | 'NETWORK' | 'INTERNAL' | 'UNKNOWN';
     code: string;
-    details: object;
     message: string;
+}
+
+export interface BraintreeHostedFormError extends BraintreeError {
+    details?: {
+        invalidFieldKeys?: string[];
+    };
+}
+
+interface BraintreeThreeDSecureVerificationData {
+    lookup: {
+        threeDSecureVersion: string;
+    };
+    paymentMethod: BraintreeVerifyPayload;
+    requiresUserAuthentication: boolean;
+    threeDSecureInfo: {
+        liabilityShiftPossible: boolean;
+        liabilityShifted: boolean;
+    };
 }

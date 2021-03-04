@@ -4,40 +4,20 @@ import { createScriptLoader } from '@bigcommerce/script-loader';
 import { merge, omit } from 'lodash';
 import { of, Observable } from 'rxjs';
 
-import { BillingAddressActionCreator, BillingAddressRequestSender } from '../../../billing';
-import { BillingAddressActionType } from '../../../billing/billing-address-actions';
+import { BillingAddressActionCreator, BillingAddressActionType, BillingAddressRequestSender } from '../../../billing';
 import { getBillingAddress, getBillingAddressState } from '../../../billing/billing-addresses.mock';
-import {
-    createCheckoutStore,
-    CheckoutRequestSender,
-    CheckoutStore,
-    CheckoutStoreState,
-    CheckoutValidator
-} from '../../../checkout';
+import { createCheckoutStore, CheckoutRequestSender, CheckoutStore, CheckoutStoreState, CheckoutValidator } from '../../../checkout';
 import { getCheckoutStoreState } from '../../../checkout/checkouts.mock';
-import {
-    InvalidArgumentError,
-    MissingDataError,
-    NotInitializedError,
-    RequestError
-} from '../../../common/error/errors';
+import { InvalidArgumentError, MissingDataError, NotInitializedError, RequestError } from '../../../common/error/errors';
 import { getErrorResponse } from '../../../common/http-request/responses.mock';
 import { getCustomerState } from '../../../customer/customers.mock';
-import {
-    OrderActionCreator,
-    OrderActionType,
-    OrderRequestSender
-} from '../../../order';
+import { OrderActionCreator, OrderActionType, OrderRequestSender } from '../../../order';
 import { OrderFinalizationNotRequiredError } from '../../../order/errors';
 import { getOrderRequestBody } from '../../../order/internal-orders.mock';
-import { createSpamProtection, SpamProtectionActionCreator } from '../../../order/spam-protection';
-import {
-    RemoteCheckoutActionCreator,
-    RemoteCheckoutActionType,
-    RemoteCheckoutRequestSender
-} from '../../../remote-checkout';
+import { RemoteCheckoutActionCreator, RemoteCheckoutActionType, RemoteCheckoutRequestSender } from '../../../remote-checkout';
 import { getRemoteCheckoutState, getRemoteCheckoutStateData } from '../../../remote-checkout/remote-checkout.mock';
 import { getConsignmentsState } from '../../../shipping/consignments.mock';
+import { SubscriptionsActionCreator, SubscriptionsRequestSender } from '../../../subscription';
 import PaymentMethod from '../../payment-method';
 import { getAmazonPay, getPaymentMethodsState } from '../../payment-methods.mock';
 import { PaymentInitializeOptions } from '../../payment-request-options';
@@ -76,6 +56,7 @@ describe('AmazonPayPaymentStrategy', () => {
             walletSpy(options);
 
             options.onReady(orderReference);
+            options.onPaymentSelect(orderReference);
         }
 
         bind(id: string) {
@@ -115,11 +96,13 @@ describe('AmazonPayPaymentStrategy', () => {
                 data: undefined,
             },
         });
-        billingAddressActionCreator = new BillingAddressActionCreator(billingAddressRequestSender);
+        billingAddressActionCreator = new BillingAddressActionCreator(
+            billingAddressRequestSender,
+            new SubscriptionsActionCreator(new SubscriptionsRequestSender(createRequestSender()))
+        );
         orderActionCreator = new OrderActionCreator(
             orderRequestSender,
-            new CheckoutValidator(new CheckoutRequestSender(createRequestSender())),
-            new SpamProtectionActionCreator(createSpamProtection(createScriptLoader()))
+            new CheckoutValidator(new CheckoutRequestSender(createRequestSender()))
         );
         remoteCheckoutActionCreator = new RemoteCheckoutActionCreator(
             new RemoteCheckoutRequestSender(createRequestSender())
@@ -311,7 +294,7 @@ describe('AmazonPayPaymentStrategy', () => {
     });
 
     it('reinitializes payment method before submitting order', async () => {
-        const payload = getOrderRequestBody();
+        const payload = omit(getOrderRequestBody(), 'useStoreCredit');
         const options = { methodId: paymentMethod.id };
         const { referenceId = '' } = getRemoteCheckoutStateData().amazon || {};
 
@@ -321,7 +304,11 @@ describe('AmazonPayPaymentStrategy', () => {
         await strategy.execute(payload, options);
 
         expect(remoteCheckoutActionCreator.initializePayment)
-            .toHaveBeenCalledWith(payload.payment && payload.payment.methodId, { referenceId, useStoreCredit: false });
+            // tslint:disable-next-line: no-non-null-assertion
+            .toHaveBeenCalledWith(payload.payment!.methodId, {
+                referenceId,
+                useStoreCredit: undefined,
+            });
 
         expect(orderActionCreator.submitOrder)
             .toHaveBeenCalledWith({
@@ -385,7 +372,7 @@ describe('AmazonPayPaymentStrategy', () => {
                 referenceId: '511ed7ed-221c-418c-8286-f5102e49220b',
             }));
 
-        const { email, ...address } = getBillingAddress();
+        const { email, shouldSaveAddress, ...address } = getBillingAddress();
 
         expect(billingAddressActionCreator.updateAddress).toHaveBeenCalledWith(address);
         expect(store.dispatch).toHaveBeenCalledWith(initializeBillingAction);
@@ -469,26 +456,10 @@ describe('AmazonPayPaymentStrategy', () => {
     });
 
     describe('When 3ds is enabled', () => {
+        const amazon3ds = getAmazonPay();
+        const payload = getOrderRequestBody();
         const paymentMethodsState = {
-            data: [{
-                id: 'amazon',
-                logoUrl: '',
-                method: 'widget',
-                supportedCards: [],
-                config: {
-                    displayName: 'AmazonPay',
-                    is3dsEnabled: true,
-                    merchantId: '0c173620-beb6-4421-99ef-03dc71a60685',
-                    testMode: false,
-                },
-                type: 'PAYMENT_TYPE_API',
-                initializationData: {
-                    clientId: '087eccf4-7f68-4384-b0a9-5f2fd6b0d344',
-                    region: 'US',
-                    redirectUrl: '/remote-checkout/amazon/redirect',
-                    tokenPrefix: 'ABCD|',
-                },
-            }],
+            data: [amazon3ds],
             meta: {
                 geoCountryCode: 'AU',
                 deviceSessionId: 'a37230e9a8e4ea2d7765e2f3e19f7b1d',
@@ -497,11 +468,11 @@ describe('AmazonPayPaymentStrategy', () => {
             errors: {},
             statuses: {},
         };
-        const payload = getOrderRequestBody();
         let options: PaymentInitializeOptions;
         let store3ds: CheckoutStore;
         let strategy3ds: AmazonPayPaymentStrategy;
         let amazonConfirmationFlow: AmazonPayConfirmationFlow;
+        amazon3ds.config.is3dsEnabled = true;
 
         beforeEach(async () => {
             options = { methodId: paymentMethod.id };
@@ -522,13 +493,36 @@ describe('AmazonPayPaymentStrategy', () => {
                 error: jest.fn(),
             };
 
-            jest.spyOn(store3ds, 'dispatch').mockReturnValue(Promise.resolve());
-            jest.spyOn(store3ds.getState().remoteCheckout, 'getCheckout')
-                    .mockReturnValue({ referenceId: 'referenceId' });
             await strategy3ds.initialize({ methodId: paymentMethod.id, amazon: { container: 'wallet' } });
         });
 
         it('redirects to confirmation flow success when support 3ds', async () => {
+
+            const remoteCheckout = {
+                referenceId: 'referenceId',
+                shipping: {},
+            };
+
+            jest.spyOn(store3ds, 'getState');
+
+            jest.spyOn(store3ds.getState().remoteCheckout, 'getCheckout')
+                .mockReturnValue(remoteCheckout);
+
+            if (hostWindow.OffAmazonPayments) {
+                hostWindow.OffAmazonPayments.initConfirmationFlow = jest.fn((_sellerId, _referenceId, callback) => {
+                    callback(amazonConfirmationFlow);
+                });
+
+                strategy3ds.execute(payload, options);
+
+                await new Promise(resolve => process.nextTick(resolve));
+
+                expect(hostWindow.OffAmazonPayments.initConfirmationFlow).toHaveBeenCalled();
+            }
+
+        });
+
+        it('redirects to confirmation flow success when support 3ds and extract OrderReferenceId from InitializationData', async () => {
             if (hostWindow.OffAmazonPayments) {
                 hostWindow.OffAmazonPayments.initConfirmationFlow = jest.fn((_sellerId, _referenceId, callback) => {
                     callback(amazonConfirmationFlow);

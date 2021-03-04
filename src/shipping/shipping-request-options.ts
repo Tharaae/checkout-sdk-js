@@ -1,6 +1,7 @@
 import { RequestOptions } from '../common/http-request';
 
 import { AmazonPayShippingInitializeOptions } from './strategies/amazon';
+import { AmazonPayV2ShippingInitializeOptions } from './strategies/amazon-pay-v2';
 
 /**
  * A set of options for configuring any requests related to the shipping step of
@@ -11,7 +12,7 @@ import { AmazonPayShippingInitializeOptions } from './strategies/amazon';
  * specific flow for setting the shipping address or option. Otherwise, these
  * options are not required.
  */
-export interface ShippingRequestOptions extends RequestOptions {
+export interface ShippingRequestOptions<T = {}> extends RequestOptions<T> {
     methodId?: string;
 }
 
@@ -25,10 +26,16 @@ export interface ShippingRequestOptions extends RequestOptions {
  * need to provide additional information in order to initialize the shipping
  * step of checkout.
  */
-export interface ShippingInitializeOptions extends ShippingRequestOptions {
+export interface ShippingInitializeOptions<T = {}> extends ShippingRequestOptions<T> {
     /**
      * The options that are required to initialize the shipping step of checkout
      * when using Amazon Pay.
      */
     amazon?: AmazonPayShippingInitializeOptions;
+
+    /**
+     * The options that are required to initialize the shipping step of checkout
+     * when using AmazonPayV2.
+     */
+    amazonpay?: AmazonPayV2ShippingInitializeOptions;
 }

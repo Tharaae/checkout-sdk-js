@@ -3,8 +3,11 @@ import { Response } from '@bigcommerce/request-sender';
 import { Timeout } from '@bigcommerce/request-sender';
 import { createTimeout } from '@bigcommerce/request-sender';
 
+declare type AccountInstrument = PayPalInstrument | BankInstrument;
+
 declare interface Address extends AddressRequestBody {
     country: string;
+    shouldSaveAddress?: boolean;
 }
 
 declare type AddressKey = keyof Address;
@@ -25,6 +28,229 @@ declare interface AddressRequestBody {
         fieldId: string;
         fieldValue: string | number | string[];
     }>;
+}
+
+declare interface AdyenAdditionalActionCallbacks {
+    /**
+     * A callback that gets called before adyen component is loaded
+     */
+    onBeforeLoad?(shopperInteraction?: boolean): void;
+    /**
+     * A callback that gets called when adyen component is loaded
+     */
+    onLoad?(cancel?: () => void): void;
+    /**
+     * A callback that gets called when adyen component verification
+     * is completed
+     */
+    onComplete?(): void;
+}
+
+declare interface AdyenAdditionalActionOptions extends AdyenAdditionalActionCallbacks {
+    /**
+     * The location to insert the additional action component.
+     */
+    containerId: string;
+}
+
+declare interface AdyenBaseCardComponentOptions {
+    /**
+     * Array of card brands that will be recognized by the component.
+     *
+     */
+    brands?: string[];
+    /**
+     * Set a style object to customize the input fields. See Styling Secured Fields
+     * for a list of supported properties.
+     */
+    styles?: StyleOptions;
+}
+
+declare interface AdyenComponent {
+    mount(containerId: string): HTMLElement;
+    unmount(): void;
+}
+
+declare interface AdyenComponentEvents {
+    /**
+     * Called when the shopper enters data in the card input fields.
+     * Here you have the option to override your main Adyen Checkout configuration.
+     */
+    onChange?(state: AdyenComponentState, component: AdyenComponent): void;
+    /**
+     * Called in case of an invalid card number, invalid expiry date, or
+     *  incomplete field. Called again when errors are cleared.
+     */
+    onError?(state: AdyenComponentState, component: AdyenComponent): void;
+}
+
+declare type AdyenComponentState = (CardState | WechatState);
+
+declare interface AdyenCreditCardComponentOptions extends AdyenBaseCardComponentOptions, AdyenComponentEvents {
+    /**
+     * Set an object containing the details array for type: scheme from
+     * the /paymentMethods response.
+     */
+    details?: InputDetail[];
+    /**
+     * Set to true to show the checkbox to save card details for the next payment.
+     */
+    enableStoreDetails?: boolean;
+    /**
+     * Set to true to request the name of the card holder.
+     */
+    hasHolderName?: boolean;
+    /**
+     * Set to true to require the card holder name.
+     */
+    holderNameRequired?: boolean;
+    /**
+     * Information to prefill fields.
+     */
+    data?: AdyenPlaceholderData;
+    /**
+     * Defaults to ['mc','visa','amex']. Configure supported card types to
+     * facilitate brand recognition used in the Secured Fields onBrand callback.
+     * See list of available card types. If a shopper enters a card type not
+     * specified in the GroupTypes configuration, the onBrand callback will not be invoked.
+     */
+    groupTypes?: string[];
+    /**
+     * Specify the sample values you want to appear for card detail input fields.
+     */
+    placeholders?: CreditCardPlaceHolder | SepaPlaceHolder;
+}
+
+declare interface AdyenIdealComponentOptions {
+    /**
+     * Optional. Set to **false** to remove the bank logos from the iDEAL form.
+     */
+    showImage?: boolean;
+}
+
+declare interface AdyenPaymentMethodState {
+    type: string;
+}
+
+declare interface AdyenPlaceholderData {
+    holderName?: string;
+    billingAddress?: {
+        street: string;
+        houseNumberOrName: string;
+        postalCode: string;
+        city: string;
+        stateOrProvince: string;
+        country: string;
+    };
+}
+
+declare interface AdyenThreeDS2Options extends AdyenAdditionalActionCallbacks {
+    /**
+     * Specify Three3DS2Challenge Widget Size
+     *
+     * Values
+     * '01' = 250px x 400px
+     * '02' = 390px x 400px
+     * '03' = 500px x 600px
+     * '04' = 600px x 400px
+     * '05' = 100% x 100%
+     */
+    widgetSize?: string;
+}
+
+/**
+ * A set of options that are required to initialize the AdyenV2 payment method.
+ *
+ * Once AdyenV2 payment is initialized, credit card form fields, provided by the
+ * payment provider as IFrames, will be inserted into the current page. These
+ * options provide a location and styling for each of the form fields.
+ *
+ * ```html
+ * <!-- This is where the credit card component will be inserted -->
+ * <div id="container"></div>
+ *
+ * <!-- This is where the secondary components (i.e.: 3DS) will be inserted -->
+ * <div id="additional-action-container"></div>
+ * ```
+ *
+ * ```js
+ * service.initializePayment({
+ *     methodId: 'adyenv2',
+ *     adyenv2: {
+ *         containerId: 'container',
+ *         additionalActionOptions: {
+ *             containerId: 'additional-action-container',
+ *         },
+ *     },
+ * });
+ * ```
+ *
+ * Additional options can be passed in to customize the components and register
+ * event callbacks.
+ *
+ * ```js
+ * service.initializePayment({
+ *     methodId: 'adyenv2',
+ *     adyenv2: {
+ *         containerId: 'container',
+ *         additionalActionOptions: {
+ *             containerId: 'additional-action-container',
+ *             onBeforeLoad(shopperInteraction) {
+ *                 console.log(shopperInteraction);
+ *             },
+ *             onLoad(cancel) {
+ *                 console.log(cancel);
+ *             },
+ *             onComplete() {
+ *                 console.log('Completed');
+ *             },
+ *         },
+ *         options: {
+ *             scheme: {
+ *                 hasHolderName: true,
+ *             },
+ *             bcmc: {
+ *                 hasHolderName: true,
+ *             },
+ *             ideal: {
+ *                 showImage: true,
+ *             },
+ *         },
+ *     },
+ * });
+ * ```
+ */
+declare interface AdyenV2PaymentInitializeOptions {
+    /**
+     * The location to insert the Adyen component.
+     */
+    containerId: string;
+    /**
+     * @deprecated The location to insert the Adyen 3DS V2 component.
+     * Use additionalActionOptions instead as this property will be removed in the future
+     */
+    threeDS2ContainerId: string;
+    /**
+     * The location to insert the Adyen custom card component
+     */
+    cardVerificationContainerId?: string;
+    /**
+     * True if the Adyen component has some Vaulted instrument
+     */
+    hasVaultedInstruments?: boolean;
+    /**
+     * @deprecated
+     * Use additionalActionOptions instead as this property will be removed in the future
+     */
+    threeDS2Options: AdyenThreeDS2Options;
+    /**
+     * A set of options that are required to initialize additional payment actions.
+     */
+    additionalActionOptions: AdyenAdditionalActionOptions;
+    /**
+     * Optional. Overwriting the default options
+     */
+    options?: Omit<AdyenCreditCardComponentOptions, 'onChange'> | AdyenIdealComponentOptions;
 }
 
 /**
@@ -68,6 +294,20 @@ declare interface AmazonPayOrderReference {
  *
  * When AmazonPay is initialized, a widget will be inserted into the DOM. The
  * widget has a list of payment options for the customer to choose from.
+ *
+ * ```html
+ * <!-- This is where the widget will be inserted -->
+ * <div id="container"></div>
+ * ```
+ *
+ * ```js
+ * service.initializePayment({
+ *     methodId: 'amazon',
+ *     amazon: {
+ *         container: 'container',
+ *     },
+ * });
+ * ```
  */
 declare interface AmazonPayPaymentInitializeOptions {
     /**
@@ -131,8 +371,168 @@ declare interface AmazonPayShippingInitializeOptions {
     onReady?(reference: AmazonPayOrderReference): void;
 }
 
+/**
+ * The required config to render the AmazonPayV2 buttton.
+ */
+declare type AmazonPayV2ButtonInitializeOptions = AmazonPayV2ButtonParams;
+
+declare interface AmazonPayV2ButtonParams {
+    /**
+     * Amazon Pay merchant account identifier.
+     */
+    merchantId: string;
+    /**
+     * Configuration for calling the endpoint to Create Checkout Session.
+     */
+    createCheckoutSession: AmazonPayV2CheckoutSession;
+    /**
+     * Placement of the Amazon Pay button on your website.
+     */
+    placement: AmazonPayV2Placement;
+    /**
+     * Ledger currency provided during registration for the given merchant identifier.
+     */
+    ledgerCurrency: AmazonPayV2LedgerCurrency;
+    /**
+     * Product type selected for checkout. Default is 'PayAndShip'.
+     */
+    productType?: AmazonPayV2PayOptions;
+    /**
+     * Language used to render the button and text on Amazon Pay hosted pages.
+     */
+    checkoutLanguage?: AmazonPayV2CheckoutLanguage;
+    /**
+     * Sets button to Sandbox environment. Default is false.
+     */
+    sandbox?: boolean;
+}
+
+declare enum AmazonPayV2CheckoutLanguage {
+    en_US = "en_US",
+    en_GB = "en_GB",
+    de_DE = "de_DE",
+    fr_FR = "fr_FR",
+    it_IT = "it_IT",
+    es_ES = "es_ES",
+    ja_JP = "ja_JP"
+}
+
+declare interface AmazonPayV2CheckoutSession {
+    /**
+     * Endpoint URL to Create Checkout Session.
+     */
+    url: string;
+    /**
+     * HTTP request method. Default is 'POST'.
+     */
+    method?: 'GET' | 'POST';
+    /**
+     * Checkout Session ID parameter in the response. Default is 'checkoutSessionId'.
+     */
+    extractAmazonCheckoutSessionId?: string;
+}
+
+/**
+ * A set of options that are required to initialize the customer step of
+ * checkout in order to support AmazonPayV2.
+ *
+ * When AmazonPayV2 is initialized, a sign-in button will be inserted into the
+ * DOM. When the customer clicks on it, they will be redirected to Amazon to
+ * sign in.
+ */
+declare interface AmazonPayV2CustomerInitializeOptions {
+    /**
+     * The ID of a container which the sign-in button should insert into.
+     */
+    container: string;
+}
+
+declare enum AmazonPayV2LedgerCurrency {
+    USD = "USD",
+    EUR = "EUR",
+    GBP = "GBP",
+    JPY = "JPY"
+}
+
+declare enum AmazonPayV2PayOptions {
+    /** Select this product type if you need the buyer's shipping details. */
+    PayAndShip = "PayAndShip",
+    /** Select this product type if you do not need the buyer's shipping details. */
+    PayOnly = "PayOnly"
+}
+
+/**
+ * A set of options that are required to initialize the payment step of
+ * checkout in order to support AmazonPayV2.
+ *
+ * When AmazonPayV2 is initialized, a change payment button will be bound.
+ * When the customer clicks on it, they will be redirected to Amazon to
+ * select a different payment method.
+ *
+ * ```html
+ * <!-- This is where the Amazon button will be inserted -->
+ * <div id="edit-button"></div>
+ * ```
+ *
+ * ```js
+ * service.initializePayment({
+ *     methodId: 'amazonpay',
+ *     amazonpay: {
+ *         editButtonId: 'edit-button',
+ *     },
+ * });
+ */
+declare interface AmazonPayV2PaymentInitializeOptions {
+    /**
+     * This editButtonId is used to set an event listener, provide an element ID
+     * if you want users to be able to select a different payment method by
+     * clicking on a button. It should be an HTML element.
+     */
+    editButtonId?: string;
+}
+
+declare enum AmazonPayV2Placement {
+    /** Initial or main page. */
+    Home = "Home",
+    /** Product details page. */
+    Product = "Product",
+    /** Cart review page before buyer starts checkout. */
+    Cart = "Cart",
+    /** Any page after buyer starts checkout. */
+    Checkout = "Checkout",
+    /** Any page that doesn't fit the previous descriptions. */
+    Other = "Other"
+}
+
+/**
+ * A set of options that are required to initialize the shipping step of
+ * checkout in order to support AmazonPayV2.
+ *
+ * When AmazonPayV2 is initialized, a change shipping button will be bound.
+ * When the customer clicks on it, they will be redirected to Amazon to
+ * select a different shipping address.
+ */
+declare interface AmazonPayV2ShippingInitializeOptions {
+    /**
+     * This editAddressButtonId is used to set an event listener, provide an
+     * element ID if you want users to be able to select a different shipping
+     * address by clicking on a button. It should be an HTML element.
+     */
+    editAddressButtonId?: string;
+}
+
 declare interface AmazonPayWidgetError extends Error {
     getErrorCode(): string;
+}
+
+declare type AnalyticStepType = 'customer' | 'shipping' | 'billing' | 'payment';
+
+declare interface BankInstrument extends BaseAccountInstrument {
+    accountNumber: string;
+    issuer: string;
+    iban: string;
+    method: string;
+    type: 'bank';
 }
 
 declare interface Banner {
@@ -140,14 +540,39 @@ declare interface Banner {
     text: string;
 }
 
-declare interface BaseProps extends Properties {
-    ':hover'?: Properties;
-    ':focus'?: Properties;
-    '::placeholder'?: Properties;
-    '::selection'?: Properties;
-    ':-webkit-autofill'?: Properties;
-    ':disabled'?: Properties;
-    '::ms-clear'?: MsClearProperties;
+declare interface BaseAccountInstrument extends BaseInstrument {
+    externalId: string;
+    method: string;
+    type: 'account' | 'bank';
+}
+
+declare interface BaseElementOptions {
+    /**
+     * Customize the appearance of an element using CSS properties passed in a [Style](https://stripe.com/docs/js/appendix/style) object,
+     * which consists of CSS properties nested under objects for each variant.
+     */
+    style?: StripeElementStyle;
+    /**
+     * Set custom class names on the container DOM element when the Stripe element is in a particular state.
+     */
+    classes?: StripeElementClasses;
+    /**
+     * Applies a disabled state to the Element such that user input is not accepted. Default is false.
+     */
+    disabled?: boolean;
+}
+
+declare interface BaseIndividualElementOptions extends BaseElementOptions {
+    containerId: string;
+}
+
+declare interface BaseInstrument {
+    bigpayToken: string;
+    defaultInstrument: boolean;
+    provider: string;
+    trustedShippingAddress: boolean;
+    method: string;
+    type: string;
 }
 
 declare interface BillingAddress extends Address {
@@ -166,24 +591,240 @@ declare interface BlockElementStyles extends InlineElementStyles {
     borderWidth?: string;
 }
 
+/**
+ * A set of options that are required to initialize the BlueSnap V2 payment
+ * method.
+ *
+ * The payment step is done through a web page via an iframe provided by the
+ * strategy.
+ *
+ * ```html
+ * <!-- This is where the BlueSnap iframe will be inserted. It can be an in-page container or a modal -->
+ * <div id="container"></div>
+ *
+ * <!-- This is a cancellation button -->
+ * <button type="button" id="cancel-button"></button>
+ * ```
+ *
+ * ```js
+ * service.initializePayment({
+ *     methodId: 'bluesnapv2',
+ *     bluesnapv2: {
+ *         onLoad: (iframe) => {
+ *             document.getElementById('container')
+ *                 .appendChild(iframe);
+ *
+ *             document.getElementById('cancel-button')
+ *                 .addEventListener('click', () => {
+ *                     document.getElementById('container').innerHTML = '';
+ *                 });
+ *         },
+ *     },
+ * });
+ */
+declare interface BlueSnapV2PaymentInitializeOptions {
+    /**
+     * A set of CSS properties to apply to the iframe.
+     */
+    style?: BlueSnapV2StyleProps;
+    /**
+     * A callback that gets called when the iframe is ready to be added to the
+     * current page. It is responsible for determining where the iframe should
+     * be inserted in the DOM.
+     *
+     * @param iframe - The iframe element containing the payment web page
+     * provided by the strategy.
+     * @param cancel - A function, when called, will cancel the payment
+     * process and remove the iframe.
+     */
+    onLoad(iframe: HTMLIFrameElement, cancel: () => void): void;
+}
+
+declare interface BlueSnapV2StyleProps {
+    border?: string;
+    height?: string;
+    width?: string;
+}
+
 declare interface BodyStyles {
     backgroundColor?: string;
+}
+
+declare interface BoltPaymentInitializeOptions {
+    /**
+     * When true, BigCommerce's checkout will be used
+     * otherwise Bolt's full checkout take over will be assumed
+     *
+     * ```js
+     * service.initializePayment({
+     *     methodId: 'bolt',
+     * });
+     * ```
+     */
+    useBigCommerceCheckout?: boolean;
 }
 
 declare interface BraintreeError extends Error {
     type: 'CUSTOMER' | 'MERCHANT' | 'NETWORK' | 'INTERNAL' | 'UNKNOWN';
     code: string;
-    details: object;
     message: string;
+}
+
+declare type BraintreeFormFieldBlurEventData = BraintreeFormFieldKeyboardEventData;
+
+declare interface BraintreeFormFieldCardTypeChangeEventData {
+    cardType?: string;
+}
+
+declare type BraintreeFormFieldEnterEventData = BraintreeFormFieldKeyboardEventData;
+
+declare type BraintreeFormFieldFocusEventData = BraintreeFormFieldKeyboardEventData;
+
+declare interface BraintreeFormFieldKeyboardEventData {
+    fieldType: string;
+}
+
+declare interface BraintreeFormFieldOptions {
+    containerId: string;
+    placeholder?: string;
+}
+
+declare type BraintreeFormFieldStyles = Partial<Pick<CSSStyleDeclaration, 'color' | 'fontFamily' | 'fontSize' | 'fontWeight'>>;
+
+declare interface BraintreeFormFieldStylesMap {
+    default?: BraintreeFormFieldStyles;
+    error?: BraintreeFormFieldStyles;
+    focus?: BraintreeFormFieldStyles;
+}
+
+declare enum BraintreeFormFieldType {
+    CardCode = "cardCode",
+    CardCodeVerification = "cardCodeVerification",
+    CardExpiry = "cardExpiry",
+    CardName = "cardName",
+    CardNumber = "cardNumber",
+    CardNumberVerification = "cardNumberVerification"
+}
+
+declare interface BraintreeFormFieldValidateErrorData {
+    fieldType: string;
+    message: string;
+    type: string;
+}
+
+declare interface BraintreeFormFieldValidateEventData {
+    errors: {
+        [BraintreeFormFieldType.CardCode]?: BraintreeFormFieldValidateErrorData[];
+        [BraintreeFormFieldType.CardExpiry]?: BraintreeFormFieldValidateErrorData[];
+        [BraintreeFormFieldType.CardName]?: BraintreeFormFieldValidateErrorData[];
+        [BraintreeFormFieldType.CardNumber]?: BraintreeFormFieldValidateErrorData[];
+        [BraintreeFormFieldType.CardCodeVerification]?: BraintreeFormFieldValidateErrorData[];
+        [BraintreeFormFieldType.CardNumberVerification]?: BraintreeFormFieldValidateErrorData[];
+    };
+    isValid: boolean;
+}
+
+declare interface BraintreeFormFieldsMap {
+    [BraintreeFormFieldType.CardCode]?: BraintreeFormFieldOptions;
+    [BraintreeFormFieldType.CardExpiry]: BraintreeFormFieldOptions;
+    [BraintreeFormFieldType.CardName]: BraintreeFormFieldOptions;
+    [BraintreeFormFieldType.CardNumber]: BraintreeFormFieldOptions;
+}
+
+declare interface BraintreeFormOptions {
+    fields: BraintreeFormFieldsMap | BraintreeStoredCardFieldsMap;
+    styles?: BraintreeFormFieldStylesMap;
+    onBlur?(data: BraintreeFormFieldBlurEventData): void;
+    onCardTypeChange?(data: BraintreeFormFieldCardTypeChangeEventData): void;
+    onFocus?(data: BraintreeFormFieldFocusEventData): void;
+    onValidate?(data: BraintreeFormFieldValidateEventData): void;
+    onEnter?(data: BraintreeFormFieldEnterEventData): void;
 }
 
 /**
  * A set of options that are required to initialize the Braintree payment
  * method. You need to provide the options if you want to support 3D Secure
  * authentication flow.
+ *
+ * ```html
+ * <!-- These containers are where the hosted (iframed) credit card fields will be inserted -->
+ * <div id="card-number"></div>
+ * <div id="card-name"></div>
+ * <div id="card-expiry"></div>
+ * <div id="card-code"></div>
+ * ```
+ *
+ * ```js
+ * service.initializePayment({
+ *     methodId: 'braintree',
+ *     braintree: {
+ *         form: {
+ *             fields: {
+ *                 cardNumber: { containerId: 'card-number' },
+ *                 cardName: { containerId: 'card-name' },
+ *                 cardExpiry: { containerId: 'card-expiry' },
+ *                 cardCode: { containerId: 'card-code' },
+ *             },
+ *         },
+ *     },
+ * });
+ * ```
+ *
+ * Additional options can be passed in to customize the fields and register
+ * event callbacks.
+ *
+ * ```js
+ * service.initializePayment({
+ *     methodId: 'braintree',
+ *     creditCard: {
+ *         form: {
+ *             fields: {
+ *                 cardNumber: { containerId: 'card-number' },
+ *                 cardName: { containerId: 'card-name' },
+ *                 cardExpiry: { containerId: 'card-expiry' },
+ *                 cardCode: { containerId: 'card-code' },
+ *             },
+ *             styles: {
+ *                 default: {
+ *                     color: '#000',
+ *                 },
+ *                 error: {
+ *                     color: '#f00',
+ *                 },
+ *                 focus: {
+ *                     color: '#0f0',
+ *                 },
+ *             },
+ *             onBlur({ fieldType }) {
+ *                 console.log(fieldType);
+ *             },
+ *             onFocus({ fieldType }) {
+ *                 console.log(fieldType);
+ *             },
+ *             onEnter({ fieldType }) {
+ *                 console.log(fieldType);
+ *             },
+ *             onCardTypeChange({ cardType }) {
+ *                 console.log(cardType);
+ *             },
+ *             onValidate({ errors, isValid }) {
+ *                 console.log(errors);
+ *                 console.log(isValid);
+ *             },
+ *         },
+ *     },
+ * });
+ * ```
  */
 declare interface BraintreePaymentInitializeOptions {
     threeDSecure?: BraintreeThreeDSecureOptions;
+    /**
+     * @alpha
+     * Please note that this option is currently in an early stage of
+     * development. Therefore the API is unstable and not ready for public
+     * consumption.
+     */
+    form?: BraintreeFormOptions;
 }
 
 declare interface BraintreePaypalButtonInitializeOptions {
@@ -196,6 +837,11 @@ declare interface BraintreePaypalButtonInitializeOptions {
      */
     allowCredit?: boolean;
     /**
+     * Address to be used for shipping.
+     * If not provided, it will use the first saved address from the active customer.
+     */
+    shippingAddress?: Address | null;
+    /**
      * A callback that gets called if unable to authorize and tokenize payment.
      *
      * @param error - The error object describing the failure.
@@ -207,6 +853,15 @@ declare interface BraintreePaypalButtonInitializeOptions {
      * @param error - The error object describing the failure.
      */
     onPaymentError?(error: BraintreeError | StandardError): void;
+}
+
+declare interface BraintreeStoredCardFieldOptions extends BraintreeFormFieldOptions {
+    instrumentId: string;
+}
+
+declare interface BraintreeStoredCardFieldsMap {
+    [BraintreeFormFieldType.CardCodeVerification]?: BraintreeStoredCardFieldOptions;
+    [BraintreeFormFieldType.CardNumberVerification]?: BraintreeStoredCardFieldOptions;
 }
 
 /**
@@ -261,6 +916,28 @@ declare interface BraintreeVisaCheckoutCustomerInitializeOptions {
  * If the customer chooses to pay with Visa Checkout, they will be asked to
  * enter their payment details via a modal. You can hook into events emitted by
  * the modal by providing the callbacks listed below.
+ *
+ * ```js
+ * service.initializePayment({
+ *     methodId: 'braintreevisacheckout',
+ * });
+ * ```
+ *
+ * Additional event callbacks can be registered.
+ *
+ * ```js
+ * service.initializePayment({
+ *     methodId: 'braintreevisacheckout',
+ *     braintreevisacheckout: {
+ *         onError(error) {
+ *             console.log(error);
+ *         },
+ *         onPaymentSelect() {
+ *             console.log('Selected');
+ *         },
+ *     },
+ * });
+ * ```
  */
 declare interface BraintreeVisaCheckoutPaymentInitializeOptions {
     /**
@@ -294,12 +971,66 @@ declare enum ButtonType {
     Short = "short"
 }
 
-declare interface CardElementProps extends BaseProps {
+declare interface CardCvcElementOptions extends BaseIndividualElementOptions {
+    placeholder?: string;
+}
+
+declare interface CardDataPaymentMethodState {
+    paymentMethod: CardPaymentMethodState;
+}
+
+declare interface CardElementOptions extends BaseElementOptions {
+    /**
+     * A pre-filled set of values to include in the input (e.g., {postalCode: '94110'}).
+     * Note that sensitive card information (card number, CVC, and expiration date)
+     * cannot be pre-filled
+     */
     value?: string;
+    /**
+     * Hide the postal code field. Default is false. If you are already collecting a
+     * full billing address or postal code elsewhere, set this to true.
+     */
     hidePostalCode?: boolean;
-    iconStyle?: string;
+    /**
+     * Appearance of the icon in the Element.
+     */
+    iconStyle?: IconStyle;
     hideIcon?: boolean;
-    disabled?: boolean;
+}
+
+declare interface CardExpiryElementOptions extends BaseIndividualElementOptions {
+    placeholder?: string;
+}
+
+declare interface CardInstrument extends BaseInstrument {
+    brand: string;
+    expiryMonth: string;
+    expiryYear: string;
+    iin: string;
+    last4: string;
+    type: 'card';
+}
+
+declare interface CardNumberElementOptions extends BaseIndividualElementOptions {
+    placeholder?: string;
+    showIcon?: boolean;
+    /**
+     * Appearance of the icon in the Element. Either `solid` or `default`
+     */
+    iconStyle?: IconStyle;
+}
+
+declare interface CardPaymentMethodState extends AdyenPaymentMethodState {
+    encryptedCardNumber: string;
+    encryptedExpiryMonth: string;
+    encryptedExpiryYear: string;
+    encryptedSecurityCode: string;
+    holderName?: string;
+}
+
+declare interface CardState {
+    data: CardDataPaymentMethodState;
+    isValid?: boolean;
 }
 
 declare interface Cart {
@@ -322,6 +1053,47 @@ declare interface ChasePayCustomerInitializeOptions {
     container: string;
 }
 
+/**
+ * A set of options that are required to initialize the Chase Pay payment method.
+ *
+ * ```html
+ * <!-- This is where the Chase Pay button will be inserted -->
+ * <div id="wallet-button"></div>
+ * ```
+ *
+ * ```js
+ * service.initializePayment({
+ *     methodId: 'chasepay',
+ *     chasepay: {
+ *         walletButton: 'wallet-button',
+ *     },
+ * });
+ * ```
+ *
+ * Additional options can be passed in to customize the fields and register
+ * event callbacks.
+ *
+ * ```html
+ * <!-- This is where the Chase Pay logo will be inserted -->
+ * <div id="logo"></div>
+ * ```
+ *
+ * ```js
+ * service.initializePayment({
+ *     methodId: 'chasepay',
+ *     chasepay: {
+ *         walletButton: 'wallet-button',
+ *         logoContainer: 'logo',
+ *         onPaymentSelect() {
+ *             console.log('Selected');
+ *         },
+ *         onCancel() {
+ *             console.log('Cancelled');
+ *         },
+ *     },
+ * });
+ * ```
+ */
 declare interface ChasePayInitializeOptions {
     /**
      * This container is used to host the chasepay branding logo.
@@ -363,14 +1135,24 @@ declare interface Checkout {
     consignments: Consignment[];
     taxes: Tax[];
     discounts: Discount[];
+    isStoreCreditApplied: boolean;
     coupons: Coupon[];
     orderId?: number;
+    giftWrappingCostTotal: number;
     shippingCostTotal: number;
     shippingCostBeforeDiscount: number;
+    /**
+     * Whether the current checkout must execute spam protection
+     * before placing the order.
+     *
+     * Note: You need to enable Google ReCAPTCHA bot protection in your Checkout Settings.
+     */
+    shouldExecuteSpamCheck: boolean;
     handlingCostTotal: number;
     taxTotal: number;
     subtotal: number;
     grandTotal: number;
+    outstandingBalance: number;
     giftCertificates: GiftCertificate[];
     promotions?: Promotion[];
     balanceDue: number;
@@ -387,6 +1169,11 @@ declare class CheckoutButtonErrorSelector {
 
 declare interface CheckoutButtonInitializeOptions extends CheckoutButtonOptions {
     /**
+     * The options that are required to facilitate AmazonPayV2. They can be
+     * omitted unless you need to support AmazonPayV2.
+     */
+    amazonpay?: AmazonPayV2ButtonInitializeOptions;
+    /**
      * The options that are required to facilitate Braintree PayPal. They can be
      * omitted unless you need to support Braintree PayPal.
      */
@@ -402,19 +1189,39 @@ declare interface CheckoutButtonInitializeOptions extends CheckoutButtonOptions 
      */
     paypal?: PaypalButtonInitializeOptions;
     /**
+     * The options that are required to facilitate PayPal Commerce. They can be omitted
+     * unless you need to support Paypal.
+     */
+    paypalCommerce?: PaypalCommerceButtonInitializeOptions;
+    /**
      * The ID of a container which the checkout button should be inserted.
      */
     containerId: string;
     /**
      * The options that are required to facilitate Braintree GooglePay. They can be
-     * omitted unles you need to support Braintree GooglePay.
+     * omitted unless you need to support Braintree GooglePay.
      */
     googlepaybraintree?: GooglePayButtonInitializeOptions;
     /**
+     * The options that are required to facilitate Checkout.com GooglePay. They can be
+     * omitted unless you need to support Checkout.com GooglePay.
+     */
+    googlepaycheckoutcom?: GooglePayButtonInitializeOptions;
+    /**
+     * The options that are required to facilitate CybersourceV2 GooglePay. They can be
+     * omitted unless you need to support CybersourceV2 GooglePay.
+     */
+    googlepaycybersourcev2?: GooglePayButtonInitializeOptions;
+    /**
      * The options that are required to facilitate Stripe GooglePay. They can be
-     * omitted unles you need to support Stripe GooglePay.
+     * omitted unless you need to support Stripe GooglePay.
      */
     googlepaystripe?: GooglePayButtonInitializeOptions;
+    /**
+     * The options that are required to facilitate Authorize.Net GooglePay.
+     * They can be omitted unless you need to support Authorize.Net GooglePay.
+     */
+    googlepayauthorizenet?: GooglePayButtonInitializeOptions;
 }
 
 declare class CheckoutButtonInitializer {
@@ -507,12 +1314,18 @@ declare interface CheckoutButtonInitializerOptions {
 }
 
 declare enum CheckoutButtonMethodType {
+    AMAZON_PAY_V2 = "amazonpay",
     BRAINTREE_PAYPAL = "braintreepaypal",
     BRAINTREE_PAYPAL_CREDIT = "braintreepaypalcredit",
+    GOOGLEPAY_ADYENV2 = "googlepayadyenv2",
+    GOOGLEPAY_AUTHORIZENET = "googlepayauthorizenet",
     GOOGLEPAY_BRAINTREE = "googlepaybraintree",
+    GOOGLEPAY_CHECKOUTCOM = "googlepaycheckoutcom",
+    GOOGLEPAY_CYBERSOURCEV2 = "googlepaycybersourcev2",
     GOOGLEPAY_STRIPE = "googlepaystripe",
     MASTERPASS = "masterpass",
-    PAYPALEXPRESS = "paypalexpress"
+    PAYPALEXPRESS = "paypalexpress",
+    PAYPALCOMMERCE = "paypalcommerce"
 }
 
 /**
@@ -536,6 +1349,10 @@ declare class CheckoutButtonStatusSelector {
     isDeinitializingButton(methodId?: CheckoutButtonMethodType): boolean;
 }
 
+declare type CheckoutIncludeParam = {
+    [key in CheckoutIncludes]?: boolean;
+};
+
 declare enum CheckoutIncludes {
     AvailableShippingOptions = "consignments.availableShippingOptions",
     PhysicalItemsCategoryNames = "cart.lineItems.physicalItems.categoryNames",
@@ -543,7 +1360,7 @@ declare enum CheckoutIncludes {
 }
 
 declare interface CheckoutParams {
-    include?: CheckoutIncludes[];
+    include?: CheckoutIncludes[] | CheckoutIncludeParam;
 }
 
 declare interface CheckoutPayment {
@@ -577,6 +1394,7 @@ declare class CheckoutService {
     private _billingAddressActionCreator;
     private _checkoutActionCreator;
     private _configActionCreator;
+    private _customerActionCreator;
     private _consignmentActionCreator;
     private _countryActionCreator;
     private _couponActionCreator;
@@ -589,7 +1407,11 @@ declare class CheckoutService {
     private _paymentStrategyActionCreator;
     private _shippingCountryActionCreator;
     private _shippingStrategyActionCreator;
+    private _signInEmailActionCreator;
     private _spamProtectionActionCreator;
+    private _storeCreditActionCreator;
+    private _subscriptionsActionCreator;
+    private _formFieldsActionCreator;
     private _storeProjection;
     private _errorTransformer;
     private _selectorsFactory;
@@ -943,13 +1765,87 @@ declare class CheckoutService {
      */
     deinitializeCustomer(options?: CustomerRequestOptions): Promise<CheckoutSelectors>;
     /**
+     * Sends a email that contains a single-use sign-in link. When a valid links is clicked,
+     * signs in the customer without requiring any password, redirecting them to the account page if no redirectUrl is provided.
+     *
+     *
+     * ```js
+     * checkoutService.sendSignInEmail({ email: 'foo@bar.com', redirectUrl: 'checkout' });
+     * ```
+     *
+     * @param signInEmailRequest - The sign-in email request values.
+     * @param options - Options for the send email request.
+     * @returns A promise that resolves to the current state.
+     */
+    sendSignInEmail(signInEmailRequest: SignInEmailRequestBody, options?: RequestOptions): Promise<CheckoutSelectors>;
+    /**
+     * Creates a customer account.
+     *
+     * @remarks
+     * ```js
+     * checkoutService.createCustomerAccount({
+     *   email: 'foo@bar.com',
+     *   firstName: 'Foo',
+     *   lastName: 'Bar',
+     *   password: 'password',
+     *   acceptsMarketingEmails: true,
+     *   customFields: [],
+     * });
+     * ```
+     * Please note that `createCustomerAccount` is currently in an early stage
+     * of development. Therefore the API is unstable and not ready for public
+     * consumption.
+     *
+     * @alpha
+     * @param customerAccount - The customer account data.
+     * @param options - Options for creating customer account.
+     * @returns A promise that resolves to the current state.
+     */
+    createCustomerAccount(customerAccount: CustomerAccountRequestBody, options?: RequestOptions): Promise<CheckoutSelectors>;
+    /**
+     * Creates a customer account address.
+     *
+     * @remarks
+     * ```js
+     * checkoutService.createCustomerAddress({
+     *   firstName: 'Foo',
+     *   lastName: 'Bar',
+     *   address1: '55 Market St',
+     *   stateOrProvinceCode: 'CA',
+     *   countryCode: 'US',
+     *   postalCode: '90110'
+     *   customFields: [],
+     * });
+     * ```
+     * Please note that `createCustomerAccountAddress` is currently in an early stage
+     * of development. Therefore the API is unstable and not ready for public
+     * consumption.
+     *
+     * @alpha
+     * @param customerAddress - The customer account data.
+     * @param options - Options for creating customer account.
+     * @returns A promise that resolves to the current state.
+     */
+    createCustomerAddress(customerAddress: CustomerAddressRequestBody, options?: RequestOptions): Promise<CheckoutSelectors>;
+    /**
+     * Updates the subscriptions associated to an email.
+     *
+     * @param subscriptions - The email and associated subscriptions to update.
+     * @param options - Options for continuing as a guest.
+     * @returns A promise that resolves to the current state.
+     */
+    updateSubscriptions(subscriptions: Subscriptions, options?: RequestOptions): Promise<CheckoutSelectors>;
+    /**
      * Continues to check out as a guest.
      *
-     * The customer is required to provide their email address in order to
-     * continue. Once they provide their email address, it will be stored as a
-     * part of their billing address.
+     * If your Checkout Settings allow it, your customers could continue the checkout as guests (without signing in).
+     * If you have enabled the checkout setting "Prompt existing accounts to sign in", this information is
+     * exposed as part of the [Customer](../interfaces/customer.md) object.
      *
-     * @param credentials - The guest credentials to use.
+     * Once they provide their email address, it will be stored as
+     * part of their [billing address](../interfaces/billingaddress.md).
+     *
+     * @param credentials - The guest credentials to use, with optional subscriptions.
      * @param options - Options for continuing as a guest.
      * @returns A promise that resolves to the current state.
      */
@@ -987,6 +1883,19 @@ declare class CheckoutService {
      *
      * // The returned object should not contain information about the previously signed-in customer.
      * console.log(state.data.getCustomer());
+     * ```
+     *
+     * When a store has "Allow customers to access their cart across multiple devices" enabled, signing out
+     * will remove the cart/checkout data from the current session. An error with type="checkout_not_available" will be thrown.
+     *
+     * ```js
+     * try {
+     *   await service.signOutCustomer();
+     * } catch (error) {
+     *   if (error.type === 'checkout_not_available') {
+     *     window.top.location.assign('/');
+     *   }
+     * }
      * ```
      *
      * @param options - Options for signing out the customer.
@@ -1092,7 +2001,7 @@ declare class CheckoutService {
      * @param options - Options for updating the shipping address.
      * @returns A promise that resolves to the current state.
      */
-    updateShippingAddress(address: Partial<AddressRequestBody>, options?: ShippingRequestOptions): Promise<CheckoutSelectors>;
+    updateShippingAddress(address: Partial<AddressRequestBody>, options?: ShippingRequestOptions<CheckoutParams>): Promise<CheckoutSelectors>;
     /**
      * Creates consignments given a list.
      *
@@ -1199,7 +2108,7 @@ declare class CheckoutService {
      * Selects a shipping option for a given consignment.
      *
      * Note: this is used when items need to be shipped to multiple addresses,
-     * for single shipping address, use `CheckoutService#updateShippingAddres`.
+     * for single shipping address, use `CheckoutService#updateShippingAddress`.
      *
      * If a shipping option has an additional cost, the quote for the current
      * order will be adjusted once the option is selected.
@@ -1237,6 +2146,21 @@ declare class CheckoutService {
      * @returns A promise that resolves to the current state.
      */
     updateBillingAddress(address: Partial<BillingAddressRequestBody>, options?: RequestOptions): Promise<CheckoutSelectors>;
+    /**
+     * Applies or removes customer's store credit code to the current checkout.
+     *
+     * Once the store credit gets applied, the outstanding balance will be adjusted accordingly.
+     *
+     * ```js
+     * const state = await service.applyStoreCredit(true);
+     *
+     * console.log(state.data.getCheckout().outstandingBalance);
+     * ```
+     *
+     * @param options - Options for applying store credit.
+     * @returns A promise that resolves to the current state.
+     */
+    applyStoreCredit(useStoreCredit: boolean, options?: RequestOptions): Promise<CheckoutSelectors>;
     /**
      * Applies a coupon code to the current checkout.
      *
@@ -1347,20 +2271,45 @@ declare class CheckoutService {
     /**
      * Initializes the spam protection for order creation.
      *
+     * Note: Use `CheckoutService#executeSpamCheck` instead.
+     * You do not need to call this method before calling
+     * `CheckoutService#executeSpamCheck`.
+     *
      * With spam protection enabled, the customer has to be verified as
      * a human. The order creation will fail if spam protection
      * is enabled but verification fails.
      *
      * ```js
-     * await service.initializeSpamProtection({
-     *     containerId: 'spamProtectionContainer',
-     * });
+     * await service.initializeSpamProtection();
      * ```
      *
      * @param options - Options for initializing spam protection.
      * @returns A promise that resolves to the current state.
+     * @deprecated - Use CheckoutService#executeSpamCheck instead.
      */
     initializeSpamProtection(options: SpamProtectionOptions): Promise<CheckoutSelectors>;
+    /**
+     * Verifies whether the current checkout is created by a human.
+     *
+     * Note: this method will do the initialization, therefore you do not
+     * need to call `CheckoutService#initializeSpamProtection`
+     * before calling this method.
+     *
+     * With spam protection enabled, the customer has to be verified as
+     * a human. The order creation will fail if spam protection
+     * is enabled but verification fails. You should call this method before
+     * `submitOrder` method is called (i.e.: when the shopper
+     * first gets to the payment step).
+     *
+     * **Note**: You need to enable Google ReCAPTCHA bot protection in your Checkout Settings.
+     *
+     * ```js
+     * await service.executeSpamCheck();
+     * ```
+     *
+     * @returns A promise that resolves to the current state.
+     */
+    executeSpamCheck(): Promise<CheckoutSelectors>;
     /**
      * Dispatches an action through the data store and returns the current state
      * once the action is dispatched.
@@ -1386,11 +2335,14 @@ declare interface CheckoutSettings {
     enableTermsAndConditions: boolean;
     googleMapsApiKey: string;
     googleRecaptchaSitekey: string;
+    isAccountCreationEnabled: boolean;
+    isStorefrontSpamProtectionEnabled: boolean;
     guestCheckoutEnabled: boolean;
     hasMultiShippingEnabled: boolean;
     isAnalyticsEnabled: boolean;
     isCardVaultingEnabled: boolean;
     isCouponCodeCollapsed: boolean;
+    isSignInEmailEnabled: boolean;
     isPaymentRequestEnabled: boolean;
     isPaymentRequestCanMakePaymentEnabled: boolean;
     isSpamProtectionEnabled: boolean;
@@ -1398,8 +2350,10 @@ declare interface CheckoutSettings {
     orderTermsAndConditions: string;
     orderTermsAndConditionsLink: string;
     orderTermsAndConditionsType: string;
+    privacyPolicyUrl: string;
     shippingQuoteFailedMessage: string;
     realtimeShippingProviders: string[];
+    requiresMarketingConsent: boolean;
     remoteCheckoutProviders: any[];
 }
 
@@ -1520,6 +2474,17 @@ declare interface CheckoutStoreErrorSelector {
     /**
      * Returns an error if unable to continue as guest.
      *
+     * The call could fail in scenarios where guest checkout is not allowed, for example, when existing accounts are required to sign-in.
+     *
+     * In the background, this call tries to set the billing address email using the Storefront API. You could access the Storefront API response status code using `getContinueAsGuestError` error selector.
+     *
+     * ```js
+     * console.log(state.errors.getContinueAsGuestError());
+     * console.log(state.errors.getContinueAsGuestError().status);
+     * ```
+     *
+     * For more information about status codes, check [Checkout Storefront API - Add Checkout Billing Address](https://developer.bigcommerce.com/api-reference/cart-checkout/storefront-checkout-api/checkout-billing-address/checkoutsbillingaddressbycheckoutidpost).
+     *
      * @returns The error object if unable to continue, otherwise undefined.
      */
     getContinueAsGuestError(): Error | undefined;
@@ -1529,6 +2494,12 @@ declare interface CheckoutStoreErrorSelector {
      * @returns The error object if unable to update, otherwise undefined.
      */
     getUpdateBillingAddressError(): Error | undefined;
+    /**
+     * Returns an error if unable to update subscriptions.
+     *
+     * @returns The error object if unable to update, otherwise undefined.
+     */
+    getUpdateSubscriptionsError(): Error | undefined;
     /**
      * Returns an error if unable to update shipping address.
      *
@@ -1569,6 +2540,12 @@ declare interface CheckoutStoreErrorSelector {
      * @returns The error object if unable to initialize, otherwise undefined.
      */
     getInitializeShippingError(methodId?: string): Error | undefined;
+    /**
+     * Returns an error if unable to apply store credit.
+     *
+     * @returns The error object if unable to apply, otherwise undefined.
+     */
+    getApplyStoreCreditError(): RequestError | undefined;
     /**
      * Returns an error if unable to apply a coupon code.
      *
@@ -1612,6 +2589,24 @@ declare interface CheckoutStoreErrorSelector {
      * @returns The error object if unable to load, otherwise undefined.
      */
     getLoadConfigError(): Error | undefined;
+    /**
+     * Returns an error if unable to send sign-in email.
+     *
+     * @returns The error object if unable to send email, otherwise undefined.
+     */
+    getSignInEmailError(): Error | undefined;
+    /**
+     * Returns an error if unable to create customer account.
+     *
+     * @returns The error object if unable to create account, otherwise undefined.
+     */
+    getCreateCustomerAccountError(): Error | undefined;
+    /**
+     * Returns an error if unable to create customer address.
+     *
+     * @returns The error object if unable to create address, otherwise undefined.
+     */
+    getCreateCustomerAddressError(): Error | undefined;
 }
 
 /**
@@ -1639,6 +2634,12 @@ declare interface CheckoutStoreSelector {
      * @returns The configuration object if it is loaded, otherwise undefined.
      */
     getConfig(): StoreConfig | undefined;
+    /**
+     * Gets the sign-in email.
+     *
+     * @returns The sign-in email object if sent, otherwise undefined
+     */
+    getSignInEmail(): SignInEmail | undefined;
     /**
      * Gets the shipping address of the current checkout.
      *
@@ -1720,6 +2721,16 @@ declare interface CheckoutStoreSelector {
      */
     getSelectedPaymentMethod(): PaymentMethod | undefined;
     /**
+     * Gets the available flash messages.
+     *
+     * Flash messages contain messages set by the server,
+     * e.g: when trying to sign in using an invalid email link.
+     *
+     * @param type - The type of flash messages to be returned. Optional
+     * @returns The flash messages if available, otherwise undefined.
+     */
+    getFlashMessages(type?: FlashMessageType): FlashMessage[] | undefined;
+    /**
      * Gets the current cart.
      *
      * @returns The current cart object if it is loaded, otherwise undefined.
@@ -1781,6 +2792,14 @@ declare interface CheckoutStoreSelector {
      * @returns The list of payment instruments if it is loaded, otherwise undefined.
      */
     getInstruments(): Instrument[] | undefined;
+    getInstruments(paymentMethod: PaymentMethod): PaymentInstrument[] | undefined;
+    /**
+     * Gets a set of form fields that should be presented in order to create a customer.
+     *
+     * @returns The set of customer account form fields if it is loaded,
+     * otherwise undefined.
+     */
+    getCustomerAccountFields(): FormField[];
     /**
      * Gets a set of form fields that should be presented to customers in order
      * to capture their billing address for a specific country.
@@ -1828,6 +2847,12 @@ declare interface CheckoutStoreStatusSelector {
      * @returns True if the current checkout is being updated, otherwise false.
      */
     isUpdatingCheckout(): boolean;
+    /**
+     * Checks whether spam check is executing.
+     *
+     * @returns True if the current checkout is being updated, otherwise false.
+     */
+    isExecutingSpamCheck(): boolean;
     /**
      * Checks whether the current order is submitting.
      *
@@ -2005,11 +3030,23 @@ declare interface CheckoutStoreStatusSelector {
      */
     isApplyingCoupon(): boolean;
     /**
+     * Checks whether the current customer is applying store credit.
+     *
+     * @returns True if applying store credit, otherwise false.
+     */
+    isApplyingStoreCredit(): boolean;
+    /**
      * Checks whether the current customer is removing a coupon code.
      *
      * @returns True if removing a coupon code, otherwise false.
      */
     isRemovingCoupon(): boolean;
+    /**
+     * Checks whether a sign-in email is being sent.
+     *
+     * @returns True if sending a sign-in email, otherwise false
+     */
+    isSendingSignInEmail(): boolean;
     /**
      * Checks whether the current customer is applying a gift certificate.
      *
@@ -2051,6 +3088,16 @@ declare interface CheckoutStoreStatusSelector {
      */
     isCustomerStepPending(): boolean;
     /**
+     * Checks whether the shipping step of a checkout is in a pending state.
+     *
+     * The shipping step is considered to be pending if it is in the process of
+     * initializing, updating address, selecting a shipping option, and/or
+     * interacting with a shipping widget.
+     *
+     * @returns True if the shipping step is pending, otherwise false.
+     */
+    isShippingStepPending(): boolean;
+    /**
      * Checks whether the payment step of a checkout is in a pending state.
      *
      * The payment step is considered to be pending if it is in the process of
@@ -2060,6 +3107,24 @@ declare interface CheckoutStoreStatusSelector {
      * @returns True if the payment step is pending, otherwise false.
      */
     isPaymentStepPending(): boolean;
+    /**
+     * Checks whether the subscriptions are being updated.
+     *
+     * @returns True if updating subscriptions, otherwise false.
+     */
+    isUpdatingSubscriptions(): boolean;
+    /**
+     * Checks whether a customer account is being created
+     *
+     * @returns True if creating, otherwise false.
+     */
+    isCreatingCustomerAccount(): boolean;
+    /**
+     * Checks whether a customer address is being created
+     *
+     * @returns True if creating, otherwise false.
+     */
+    isCreatingCustomerAddress(): boolean;
 }
 
 declare interface Consignment {
@@ -2100,6 +3165,7 @@ declare interface Country {
     name: string;
     hasPostalCodes: boolean;
     subdivisions: Region[];
+    requiresState: boolean;
 }
 
 declare interface Coupon {
@@ -2120,8 +3186,128 @@ declare interface CreditCardInstrument {
     ccNumber: string;
     ccCvv?: string;
     shouldSaveInstrument?: boolean;
+    shouldSetAsDefaultInstrument?: boolean;
     extraData?: any;
     threeDSecure?: ThreeDSecure | ThreeDSecureToken;
+}
+
+/**
+ * A set of options to initialize credit card payment methods, unless those
+ * methods require provider-specific configuration. If the initialization is
+ * successful, hosted (iframed) credit card fields will be inserted into the the
+ * containers specified in the options.
+ *
+ * ```html
+ * <!-- These containers are where the hosted (iframed) credit card fields will be inserted -->
+ * <div id="card-number"></div>
+ * <div id="card-name"></div>
+ * <div id="card-expiry"></div>
+ * <div id="card-code"></div>
+ * ```
+ *
+ * ```js
+ * service.initializePayment({
+ *     methodId: 'authorizenet',
+ *     creditCard: {
+ *         form: {
+ *             fields: {
+ *                 cardNumber: { containerId: 'card-number' },
+ *                 cardName: { containerId: 'card-name' },
+ *                 cardExpiry: { containerId: 'card-expiry' },
+ *                 cardCode: { containerId: 'card-code' },
+ *             },
+ *         },
+ *     },
+ * });
+ * ```
+ *
+ * Additional options can be passed in to customize the fields and register
+ * event callbacks.
+ *
+ * ```js
+ * service.initializePayment({
+ *     methodId: 'authorizenet',
+ *     creditCard: {
+ *         form: {
+ *             fields: {
+ *                 cardNumber: { containerId: 'card-number' },
+ *                 cardName: { containerId: 'card-name' },
+ *                 cardExpiry: { containerId: 'card-expiry' },
+ *                 cardCode: { containerId: 'card-code' },
+ *             },
+ *             styles: {
+ *                 default: {
+ *                     color: '#000',
+ *                     fontFamily: 'Arial',
+ *                 },
+ *                 error: {
+ *                     color: '#f00',
+ *                 },
+ *                 focus: {
+ *                     color: '#0f0',
+ *                 },
+ *             },
+ *             onBlur({ fieldType }) {
+ *                 console.log(fieldType);
+ *             },
+ *             onFocus({ fieldType }) {
+ *                 console.log(fieldType);
+ *             },
+ *             onEnter({ fieldType }) {
+ *                 console.log(fieldType);
+ *             },
+ *             onCardTypeChange({ cardType }) {
+ *                 console.log(cardType);
+ *             },
+ *             onValidate({ errors, isValid }) {
+ *                 console.log(errors);
+ *                 console.log(isValid);
+ *             },
+ *         },
+ *     },
+ * });
+ * ```
+ */
+declare interface CreditCardPaymentInitializeOptions {
+    form: HostedFormOptions;
+}
+
+declare interface CreditCardPlaceHolder {
+    encryptedCardNumber?: string;
+    encryptedExpiryDate?: string;
+    encryptedSecurityCode: string;
+}
+
+declare interface CssProperties {
+    background?: string;
+    color?: string;
+    display?: string;
+    font?: string;
+    fontFamily?: string;
+    fontSize?: string;
+    fontSizeAdjust?: string;
+    fontSmoothing?: string;
+    fontStretch?: string;
+    fontStyle?: string;
+    fontVariant?: string;
+    fontVariantAlternates?: string;
+    fontVariantCaps?: string;
+    fontVariantEastAsian?: string;
+    fontVariantLigatures?: string;
+    fontVariantNumeric?: string;
+    fontWeight?: string;
+    letterSpacing?: string;
+    lineHeight?: string;
+    mozOsxFontSmoothing?: string;
+    mozTransition?: string;
+    outline?: string;
+    opacity?: string | number;
+    padding?: string;
+    textAlign?: string;
+    textShadow?: string;
+    transition?: string;
+    webkitFontSmoothing?: string;
+    webkitTransition?: string;
 }
 
 declare interface Currency {
@@ -2161,11 +3347,33 @@ declare interface Customer {
     id: number;
     addresses: CustomerAddress[];
     storeCredit: number;
+    /**
+     * The email address of the signed in customer.
+     */
     email: string;
     firstName: string;
     fullName: string;
     isGuest: boolean;
     lastName: string;
+    /**
+     * Indicates whether the customer should be prompted to sign-in.
+     *
+     * Note: You need to enable "Prompt existing accounts to sign in" in your Checkout Settings.
+     */
+    shouldEncourageSignIn: boolean;
+    customerGroup?: CustomerGroup;
+}
+
+declare interface CustomerAccountRequestBody {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+    acceptsMarketingEmails?: boolean;
+    customFields?: Array<{
+        fieldId: string;
+        fieldValue: string | number | string[];
+    }>;
 }
 
 declare interface CustomerAddress extends Address {
@@ -2173,9 +3381,16 @@ declare interface CustomerAddress extends Address {
     type: string;
 }
 
+declare type CustomerAddressRequestBody = AddressRequestBody;
+
 declare interface CustomerCredentials {
     email: string;
     password: string;
+}
+
+declare interface CustomerGroup {
+    id: number;
+    name: string;
 }
 
 /**
@@ -2195,6 +3410,11 @@ declare interface CustomerInitializeOptions extends CustomerRequestOptions {
     amazon?: AmazonPayCustomerInitializeOptions;
     /**
      * The options that are required to initialize the customer step of checkout
+     * when using AmazonPayV2.
+     */
+    amazonpay?: AmazonPayV2CustomerInitializeOptions;
+    /**
+     * The options that are required to initialize the customer step of checkout
      * when using Visa Checkout provided by Braintree.
      */
     braintreevisacheckout?: BraintreeVisaCheckoutCustomerInitializeOptions;
@@ -2212,12 +3432,39 @@ declare interface CustomerInitializeOptions extends CustomerRequestOptions {
      * The options that are required to initialize the GooglePay payment method.
      * They can be omitted unless you need to support GooglePay.
      */
+    googlepayadyenv2?: GooglePayCustomerInitializeOptions;
+    /**
+     * The options that are required to initialize the GooglePay payment method.
+     * They can be omitted unless you need to support GooglePay.
+     */
+    googlepayauthorizenet?: GooglePayCustomerInitializeOptions;
+    /**
+     * The options that are required to initialize the GooglePay payment method.
+     * They can be omitted unless you need to support GooglePay.
+     */
     googlepaybraintree?: GooglePayCustomerInitializeOptions;
     /**
      * The options that are required to initialize the GooglePay payment method.
      * They can be omitted unless you need to support GooglePay.
      */
+    googlepaycheckoutcom?: GooglePayCustomerInitializeOptions;
+    /**
+     * The options that are required to initialize the GooglePay payment method.
+     * They can be omitted unless you need to support GooglePay.
+     */
+    googlepaycybersourcev2?: GooglePayCustomerInitializeOptions;
+    /**
+     * The options that are required to initialize the GooglePay payment method.
+     * They can be omitted unless you need to support GooglePay.
+     */
     googlepaystripe?: GooglePayCustomerInitializeOptions;
+}
+
+declare interface CustomerPasswordRequirements {
+    alpha: string;
+    numeric: string;
+    minlength: number;
+    description: string;
 }
 
 /**
@@ -2364,6 +3611,14 @@ declare interface EmbeddedContentOptions {
     contentId?: string;
 }
 
+declare interface FlashMessage {
+    type: FlashMessageType;
+    message: string;
+    title?: string;
+}
+
+declare type FlashMessageType = 'error' | 'info' | 'warning' | 'success';
+
 declare interface FormField {
     name: string | AddressKey;
     custom: boolean;
@@ -2379,9 +3634,10 @@ declare interface FormField {
     min?: string | number;
     max?: string | number;
     options?: FormFieldOptions;
+    requirements?: CustomerPasswordRequirements;
 }
 
-declare type FormFieldFieldType = 'checkbox' | 'date' | 'text' | 'dropdown' | 'radio' | 'multiline';
+declare type FormFieldFieldType = 'checkbox' | 'date' | 'text' | 'dropdown' | 'password' | 'radio' | 'multiline';
 
 declare interface FormFieldItem {
     value: string;
@@ -2397,8 +3653,9 @@ declare interface FormFieldOptions {
 declare type FormFieldType = 'array' | 'date' | 'integer' | 'string';
 
 declare interface FormFields {
-    shippingAddressFields: FormField[];
-    billingAddressFields: FormField[];
+    customerAccount: FormField[];
+    shippingAddress: FormField[];
+    billingAddress: FormField[];
 }
 
 declare interface GatewayOrderPayment extends OrderPayment {
@@ -2471,6 +3728,38 @@ declare interface GooglePayCustomerInitializeOptions {
  * If the customer chooses to pay with GooglePay, they will be asked to
  * enter their payment details via a modal. You can hook into events emitted by
  * the modal by providing the callbacks listed below.
+ *
+ * ```html
+ * <!-- This is where the GooglePay button will be inserted -->
+ * <div id="wallet-button"></div>
+ * ```
+ *
+ * ```js
+ * service.initializePayment({
+ *     // Using GooglePay provided by Braintree as an example
+ *     methodId: 'googlepaybraintree',
+ *     googlepaybraintree: {
+ *         walletButton: 'wallet-button'
+ *     },
+ * });
+ * ```
+ *
+ * Additional event callbacks can be registered.
+ *
+ * ```js
+ * service.initializePayment({
+ *     methodId: 'googlepaybraintree',
+ *     googlepaybraintree: {
+ *         walletButton: 'wallet-button',
+ *         onError(error) {
+ *             console.log(error);
+ *         },
+ *         onPaymentSelect() {
+ *             console.log('Selected');
+ *         },
+ *     },
+ * });
+ * ```
  */
 declare interface GooglePayPaymentInitializeOptions {
     /**
@@ -2492,13 +3781,184 @@ declare interface GooglePayPaymentInitializeOptions {
     onPaymentSelect?(): void;
 }
 
-declare interface GuestCredentials {
+declare type GuestCredentials = Partial<Subscriptions> & {
     id?: string;
     email: string;
+};
+
+declare interface HostedCardFieldOptions {
+    accessibilityLabel?: string;
+    containerId: string;
+    placeholder?: string;
+}
+
+declare interface HostedCardFieldOptionsMap {
+    [HostedFieldType.CardCode]?: HostedCardFieldOptions;
+    [HostedFieldType.CardExpiry]: HostedCardFieldOptions;
+    [HostedFieldType.CardName]: HostedCardFieldOptions;
+    [HostedFieldType.CardNumber]: HostedCardFieldOptions;
+}
+
+declare type HostedCreditCardInstrument = Omit<CreditCardInstrument, 'ccExpiry' | 'ccName' | 'ccNumber' | 'ccCvv'>;
+
+declare type HostedFieldBlurEventData = HostedInputBlurEvent['payload'];
+
+declare type HostedFieldCardTypeChangeEventData = HostedInputCardTypeChangeEvent['payload'];
+
+declare type HostedFieldEnterEventData = HostedInputEnterEvent['payload'];
+
+declare type HostedFieldFocusEventData = HostedInputFocusEvent['payload'];
+
+declare type HostedFieldOptionsMap = HostedCardFieldOptionsMap | HostedStoredCardFieldOptionsMap;
+
+declare type HostedFieldStyles = HostedInputStyles;
+
+declare interface HostedFieldStylesMap {
+    default?: HostedFieldStyles;
+    error?: HostedFieldStyles;
+    focus?: HostedFieldStyles;
+}
+
+declare enum HostedFieldType {
+    CardCode = "cardCode",
+    CardCodeVerification = "cardCodeVerification",
+    CardExpiry = "cardExpiry",
+    CardName = "cardName",
+    CardNumber = "cardNumber",
+    CardNumberVerification = "cardNumberVerification"
+}
+
+declare type HostedFieldValidateEventData = HostedInputValidateEvent['payload'];
+
+declare interface HostedFormOptions {
+    fields: HostedFieldOptionsMap;
+    styles?: HostedFieldStylesMap;
+    onBlur?(data: HostedFieldBlurEventData): void;
+    onCardTypeChange?(data: HostedFieldCardTypeChangeEventData): void;
+    onEnter?(data: HostedFieldEnterEventData): void;
+    onFocus?(data: HostedFieldFocusEventData): void;
+    onValidate?(data: HostedFieldValidateEventData): void;
+}
+
+declare interface HostedInputBlurEvent {
+    type: HostedInputEventType.Blurred;
+    payload: {
+        fieldType: HostedFieldType;
+    };
+}
+
+declare interface HostedInputCardTypeChangeEvent {
+    type: HostedInputEventType.CardTypeChanged;
+    payload: {
+        cardType?: string;
+    };
+}
+
+declare interface HostedInputEnterEvent {
+    type: HostedInputEventType.Entered;
+    payload: {
+        fieldType: HostedFieldType;
+    };
+}
+
+declare enum HostedInputEventType {
+    AttachSucceeded = "HOSTED_INPUT:ATTACH_SUCCEEDED",
+    AttachFailed = "HOSTED_INPUT:ATTACH_FAILED",
+    BinChanged = "HOSTED_INPUT:BIN_CHANGED",
+    Blurred = "HOSTED_INPUT:BLURRED",
+    Changed = "HOSTED_INPUT:CHANGED",
+    CardTypeChanged = "HOSTED_INPUT:CARD_TYPE_CHANGED",
+    Entered = "HOSTED_INPUT:ENTERED",
+    Focused = "HOSTED_INPUT:FOCUSED",
+    SubmitSucceeded = "HOSTED_INPUT:SUBMIT_SUCCEEDED",
+    SubmitFailed = "HOSTED_INPUT:SUBMIT_FAILED",
+    Validated = "HOSTED_INPUT:VALIDATED"
+}
+
+declare interface HostedInputFocusEvent {
+    type: HostedInputEventType.Focused;
+    payload: {
+        fieldType: HostedFieldType;
+    };
+}
+
+declare type HostedInputStyles = Partial<Pick<CSSStyleDeclaration, 'color' | 'fontFamily' | 'fontSize' | 'fontWeight'>>;
+
+declare interface HostedInputValidateErrorData {
+    fieldType: string;
+    message: string;
+    type: string;
+}
+
+declare interface HostedInputValidateErrorDataMap {
+    [HostedFieldType.CardCode]?: HostedInputValidateErrorData[];
+    [HostedFieldType.CardCodeVerification]?: HostedInputValidateErrorData[];
+    [HostedFieldType.CardExpiry]?: HostedInputValidateErrorData[];
+    [HostedFieldType.CardName]?: HostedInputValidateErrorData[];
+    [HostedFieldType.CardNumber]?: HostedInputValidateErrorData[];
+    [HostedFieldType.CardNumberVerification]?: HostedInputValidateErrorData[];
+}
+
+declare interface HostedInputValidateEvent {
+    type: HostedInputEventType.Validated;
+    payload: HostedInputValidateResults;
+}
+
+declare interface HostedInputValidateResults {
+    errors: HostedInputValidateErrorDataMap;
+    isValid: boolean;
 }
 
 declare interface HostedInstrument {
     shouldSaveInstrument?: boolean;
+    shouldSetAsDefaultInstrument?: boolean;
+}
+
+declare interface HostedStoredCardFieldOptions extends HostedCardFieldOptions {
+    instrumentId: string;
+}
+
+declare interface HostedStoredCardFieldOptionsMap {
+    [HostedFieldType.CardCodeVerification]?: HostedStoredCardFieldOptions;
+    [HostedFieldType.CardNumberVerification]?: HostedStoredCardFieldOptions;
+}
+
+declare type HostedVaultedInstrument = Omit<VaultedInstrument, 'ccNumber' | 'ccCvv'>;
+
+declare interface IbanElementOptions extends BaseElementOptions {
+    /**
+     * Specify the list of countries or country-groups whose IBANs you want to allow.
+     * Must be ['SEPA'].
+     */
+    supportedCountries?: string[];
+    /**
+     * Customize the country and format of the placeholder IBAN. Default is DE.
+     */
+    placeholderCountry?: string;
+    /**
+     * Appearance of the icon in the Element.
+     */
+    iconStyle?: IconStyle;
+}
+
+declare enum IconStyle {
+    Solid = "solid",
+    Default = "default"
+}
+
+declare interface IdealElementOptions extends BaseElementOptions {
+    value?: string;
+    /**
+     * Hides the icon in the Element. Default is false.
+     */
+    hideIcon?: boolean;
+}
+
+declare interface IndividualCardElementOptions {
+    cardCvcElementOptions: CardCvcElementOptions;
+    cardExpiryElementOptions: CardExpiryElementOptions;
+    cardNumberElementOptions: CardNumberElementOptions;
+    zipCodeElementOptions?: ZipCodeElementOptions;
 }
 
 declare interface InlineElementStyles {
@@ -2509,6 +3969,41 @@ declare interface InlineElementStyles {
     lineHeight?: string;
 }
 
+declare interface InputDetail {
+    /**
+     * Configuration parameters for the required input.
+     */
+    configuration?: object;
+    /**
+     * Input details can also be provided recursively.
+     */
+    details?: SubInputDetail[];
+    /**
+     * In case of a select, the URL from which to query the items.
+     */
+    itemSearchUrl?: string;
+    /**
+     * In case of a select, the items to choose from.
+     */
+    items?: Item[];
+    /**
+     * The value to provide in the result.
+     */
+    key?: string;
+    /**
+     * True if this input value is optional.
+     */
+    optional?: boolean;
+    /**
+     * The type of the required input.
+     */
+    type?: string;
+    /**
+     * The value can be pre-filled, if available.
+     */
+    value?: string;
+}
+
 declare interface InputStyles extends BlockElementStyles {
     active?: BlockElementStyles;
     error?: InputStyles;
@@ -2517,19 +4012,27 @@ declare interface InputStyles extends BlockElementStyles {
     disabled?: BlockElementStyles;
 }
 
-declare interface Instrument {
-    bigpayToken: string;
-    defaultInstrument: boolean;
-    provider: string;
-    iin: string;
-    last4: string;
-    expiryMonth: string;
-    expiryYear: string;
-    brand: string;
-    trustedShippingAddress: boolean;
+declare type Instrument = CardInstrument;
+
+declare interface Item {
+    /**
+     * The value to provide in the result.
+     */
+    id?: string;
+    /**
+     * The display name.
+     */
+    name?: string;
 }
 
 declare interface KlarnaLoadResponse {
+    show_form: boolean;
+    error?: {
+        invalid_fields: string[];
+    };
+}
+
+declare interface KlarnaLoadResponse_2 {
     show_form: boolean;
     error?: {
         invalid_fields: string[];
@@ -2541,6 +4044,34 @@ declare interface KlarnaLoadResponse {
  *
  * When Klarna is initialized, a widget will be inserted into the DOM. The
  * widget has a list of payment options for the customer to choose from.
+ *
+ * ```html
+ * <!-- This is where the widget will be inserted -->
+ * <div id="container"></div>
+ * ```
+ *
+ * ```js
+ * service.initializePayment({
+ *     methodId: 'klarna',
+ *     klarna: {
+ *         container: 'container'
+ *     },
+ * });
+ * ```
+ *
+ * An additional event callback can be registered.
+ *
+ * ```js
+ * service.initializePayment({
+ *     methodId: 'klarnav2',
+ *     klarnav2: {
+ *         container: 'container',
+ *         onLoad(response) {
+ *             console.log(response);
+ *         },
+ *     },
+ * });
+ * ```
  */
 declare interface KlarnaPaymentInitializeOptions {
     /**
@@ -2555,6 +4086,55 @@ declare interface KlarnaPaymentInitializeOptions {
      * or not the widget is loaded successfully.
      */
     onLoad?(response: KlarnaLoadResponse): void;
+}
+
+/**
+ * A set of options that are required to initialize the KlarnaV2 payment method.
+ *
+ * When KlarnaV2 is initialized, a list of payment options will be displayed for the customer to choose from.
+ * Each one with its own widget.
+ *
+ * ```html
+ * <!-- This is where the widget will be inserted -->
+ * <div id="container"></div>
+ * ```
+ *
+ * ```js
+ * service.initializePayment({
+ *     methodId: 'klarnav2',
+ *     klarnav2: {
+ *         container: 'container'
+ *     },
+ * });
+ * ```
+ *
+ * An additional event callback can be registered.
+ *
+ * ```js
+ * service.initializePayment({
+ *     methodId: 'klarnav2',
+ *     klarnav2: {
+ *         container: 'container',
+ *         onLoad(response) {
+ *             console.log(response);
+ *         },
+ *     },
+ * });
+ * ```
+ */
+declare interface KlarnaV2PaymentInitializeOptions {
+    /**
+     * The ID of a container which the payment widget should insert into.
+     */
+    container: string;
+    /**
+     * A callback that gets called when the widget is loaded and ready to be
+     * interacted with.
+     *
+     * @param response - The result of the initialization. It indicates whether
+     * or not the widget is loaded successfully.
+     */
+    onLoad?(response: KlarnaLoadResponse_2): void;
 }
 
 declare interface LabelStyles extends InlineElementStyles {
@@ -2651,8 +4231,10 @@ declare interface LineItem {
     couponAmount: number;
     listPrice: number;
     salePrice: number;
+    comparisonPrice: number;
     extendedListPrice: number;
     extendedSalePrice: number;
+    extendedComparisonPrice: number;
     socialMedia?: LineItemSocialData[];
     options?: LineItemOption[];
     addedByPromotion: boolean;
@@ -2674,7 +4256,7 @@ declare interface LineItemOption {
     name: string;
     nameId: number;
     value: string;
-    valueId: number;
+    valueId: number | null;
 }
 
 declare interface LineItemSocialData {
@@ -2707,6 +4289,23 @@ declare interface MasterpassCustomerInitializeOptions {
     container: string;
 }
 
+/**
+ * A set of options that are required to initialize the Masterpass payment method.
+ *
+ * ```html
+ * <!-- This is where the Masterpass button will be inserted -->
+ * <div id="wallet-button"></div>
+ * ```
+ *
+ * ```js
+ * service.initializePayment({
+ *     methodId: 'masterpass',
+ *     masterpass: {
+ *         walletButton: 'wallet-button'
+ *     },
+ * });
+ * ```
+ */
 declare interface MasterpassPaymentInitializeOptions {
     /**
      * This walletButton is used to set an event listener, provide an element ID if you want
@@ -2716,8 +4315,12 @@ declare interface MasterpassPaymentInitializeOptions {
     walletButton?: string;
 }
 
-declare interface MsClearProperties extends Properties {
-    display?: string;
+declare interface MolliePaymentInitializeOptions {
+    cardNumberId: string;
+    cardHolderId: string;
+    cardCvcId: string;
+    cardExpiryId: string;
+    styles: object;
 }
 
 declare interface NonceGenerationError {
@@ -2725,6 +4328,15 @@ declare interface NonceGenerationError {
     message: string;
     field: string;
 }
+
+declare interface NonceInstrument {
+    nonce: string;
+    shouldSaveInstrument?: boolean;
+    shouldSetAsDefaultInstrument?: boolean;
+    deviceSessionId?: string;
+}
+
+declare type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;
 
 declare interface Order {
     baseAmount: number;
@@ -2736,6 +4348,7 @@ declare interface Order {
     customerId: number;
     customerMessage: string;
     discountAmount: number;
+    handlingCostTotal: number;
     hasDigitalItems: boolean;
     isComplete: boolean;
     isDownloadable: boolean;
@@ -2744,13 +4357,14 @@ declare interface Order {
     orderAmount: number;
     orderAmountAsInteger: number;
     orderId: number;
+    payments?: OrderPayments;
+    giftWrappingCostTotal: number;
     shippingCostTotal: number;
     shippingCostBeforeDiscount: number;
-    handlingCostTotal: number;
+    status: string;
     taxes: Tax[];
     taxTotal: number;
-    payments?: OrderPayments;
-    status: string;
+    mandateUrl?: string;
 }
 
 declare interface OrderPayment {
@@ -2774,10 +4388,10 @@ declare interface OrderPaymentRequestBody {
      */
     gatewayId?: string;
     /**
-     * An object that contains the details of a credit card or vaulted payment
-     * instrument.
+     * An object that contains the details of a credit card, vaulted payment
+     * instrument or nonce instrument.
      */
-    paymentData?: CreditCardInstrument | VaultedInstrument | HostedInstrument;
+    paymentData?: CreditCardInstrument | HostedInstrument | HostedCreditCardInstrument | HostedVaultedInstrument | NonceInstrument | VaultedInstrument | CreditCardInstrument & WithDocumentInstrument;
 }
 
 declare type OrderPayments = Array<GatewayOrderPayment | GiftCertificateOrderPayment>;
@@ -2790,7 +4404,7 @@ declare interface OrderRequestBody {
      * An object that contains the payment details of a customer. In some cases,
      * you can omit this object if the order does not require further payment.
      * For example, the customer is able to use their store credit to pay for
-     * the entire order. Or they have already submitted thier payment details
+     * the entire order. Or they have already submitted their payment details
      * using PayPal.
      */
     payment?: OrderPaymentRequestBody;
@@ -2808,16 +4422,47 @@ declare interface PasswordRequirements {
     error: string;
 }
 
+declare interface PayPalInstrument extends BaseAccountInstrument {
+    method: 'paypal';
+}
+
 /**
  * A set of options that are required to initialize the payment step of the
  * current checkout flow.
  */
 declare interface PaymentInitializeOptions extends PaymentRequestOptions {
     /**
+     * @alpha
+     * Please note that this option is currently in an early stage of
+     * development. Therefore the API is unstable and not ready for public
+     * consumption.
+     */
+    creditCard?: CreditCardPaymentInitializeOptions;
+    /**
+     * The options that are required to initialize the AdyenV2 payment
+     * method. They can be omitted unless you need to support AdyenV2.
+     */
+    adyenv2?: AdyenV2PaymentInitializeOptions;
+    /**
      * The options that are required to initialize the Amazon Pay payment
      * method. They can be omitted unless you need to support AmazonPay.
      */
     amazon?: AmazonPayPaymentInitializeOptions;
+    /**
+     * The options that are required to initialize the AmazonPayV2 payment
+     * method. They can be omitted unless you need to support AmazonPayV2.
+     */
+    amazonpay?: AmazonPayV2PaymentInitializeOptions;
+    /**
+     * The options that are required to initialize the BlueSnapV2 payment method.
+     * They can be omitted unless you need to support BlueSnapV2.
+     */
+    bluesnapv2?: BlueSnapV2PaymentInitializeOptions;
+    /**
+     * The options that allow Bolt to load the client script and handle the checkout.
+     * They can be omitted if Bolt's full checkout take over is intended.
+     */
+    bolt?: BoltPaymentInitializeOptions;
     /**
      * The options that are required to initialize the Braintree payment method.
      * They can be omitted unless you need to support Braintree.
@@ -2835,6 +4480,11 @@ declare interface PaymentInitializeOptions extends PaymentRequestOptions {
      */
     klarna?: KlarnaPaymentInitializeOptions;
     /**
+     * The options that are required to initialize the KlarnaV2 payment method.
+     * They can be omitted unless you need to support KlarnaV2.
+     */
+    klarnav2?: KlarnaV2PaymentInitializeOptions;
+    /**
      * The options that are required to initialize the Masterpass payment method.
      * They can be omitted unless you need to support Masterpass.
      */
@@ -2844,6 +4494,11 @@ declare interface PaymentInitializeOptions extends PaymentRequestOptions {
      * They can be omitted unless you need to support PayPal Express.
      */
     paypalexpress?: PaypalExpressPaymentInitializeOptions;
+    /**
+     * The options that are required to initialize the PayPal Commerce payment method.
+     * They can be omitted unless you need to support PayPal Commerce.
+     */
+    paypalcommerce?: PaypalCommerceInitializeOptions;
     /**
      * The options that are required to initialize the Square payment method.
      * They can be omitted unless you need to support Square.
@@ -2855,10 +4510,30 @@ declare interface PaymentInitializeOptions extends PaymentRequestOptions {
      */
     chasepay?: ChasePayInitializeOptions;
     /**
+     * The options that are required to initialize the GooglePay Authorize.Net
+     * payment method. They can be omitted unless you need to support GooglePay.
+     */
+    googlepayadyenv2?: GooglePayPaymentInitializeOptions;
+    /**
+     * The options that are required to initialize the GooglePay Authorize.Net
+     * payment method. They can be omitted unless you need to support GooglePay.
+     */
+    googlepayauthorizenet?: GooglePayPaymentInitializeOptions;
+    /**
      * The options that are required to initialize the GooglePay Braintree payment method.
      * They can be omitted unless you need to support GooglePay.
      */
     googlepaybraintree?: GooglePayPaymentInitializeOptions;
+    /**
+     * The options that are required to initialize the GooglePay Checkout.com payment method.
+     * They can be omitted unless you need to support GooglePay.
+     */
+    googlepaycheckoutcom?: GooglePayPaymentInitializeOptions;
+    /**
+     * The options that are required to initialize the GooglePay CybersourceV2 payment method.
+     * They can be omitted unless you need to support GooglePay.
+     */
+    googlepaycybersourcev2?: GooglePayPaymentInitializeOptions;
     /**
      * The options that are required to initialize the GooglePay Stripe payment method.
      * They can be omitted unless you need to support GooglePay.
@@ -2869,7 +4544,14 @@ declare interface PaymentInitializeOptions extends PaymentRequestOptions {
      * They can be omitted unless you need to support StripeV3.
      */
     stripev3?: StripeV3PaymentInitializeOptions;
+    /**
+     * The options that are required to initialize the Mollie payment method.
+     * They can be omitted unless you need to support Mollie.
+     */
+    mollie?: MolliePaymentInitializeOptions;
 }
+
+declare type PaymentInstrument = CardInstrument | AccountInstrument;
 
 declare interface PaymentMethod {
     id: string;
@@ -2889,8 +4571,10 @@ declare interface PaymentMethodConfig {
     cardCode?: boolean;
     displayName?: string;
     enablePaypal?: boolean;
+    hasDefaultStoredInstrument?: boolean;
     helpText?: string;
     is3dsEnabled?: boolean;
+    isHostedFormEnabled?: boolean;
     isVaultingCvvEnabled?: boolean;
     isVaultingEnabled?: boolean;
     isVisaCheckoutEnabled?: boolean;
@@ -2960,6 +4644,332 @@ declare interface PaypalButtonStyleOptions {
     fundingicons?: boolean;
 }
 
+declare interface PaypalButtonStyleOptions_2 {
+    layout?: StyleButtonLayout;
+    color?: StyleButtonColor;
+    shape?: StyleButtonShape;
+    height?: 25 | 26 | 27 | 28 | 29 | 30 | 31 | 32 | 33 | 34 | 35 | 36 | 37 | 38 | 39 | 40 | 41 | 42 | 43 | 44 | 45 | 46 | 47 | 48 | 49 | 50 | 51 | 52 | 53 | 54 | 55;
+    label?: StyleButtonLabel;
+    tagline?: boolean;
+}
+
+declare interface PaypalCommerceButtonInitializeOptions {
+    /**
+     * A set of styling options for the checkout button.
+     */
+    style?: PaypalButtonStyleOptions_2;
+    /**
+     * Container id for messaging banner container
+     */
+    messagingContainer?: string;
+}
+
+/**
+ * A set of options that are required to initialize the PayPal Commerce payment
+ * method for presenting its credit card form.
+ *
+ * ```html
+ * <!-- These containers are where the hosted (iframed) credit card fields will be inserted -->
+ * <div id="card-number"></div>
+ * <div id="card-name"></div>
+ * <div id="card-expiry"></div>
+ * <div id="card-code"></div>
+ * ```
+ *
+ * ```js
+ * service.initializePayment({
+ *     methodId: 'paypalcommerce',
+ *     paypalcommerce: {
+ *         form: {
+ *             fields: {
+ *                 cardNumber: { containerId: 'card-number' },
+ *                 cardName: { containerId: 'card-name' },
+ *                 cardExpiry: { containerId: 'card-expiry' },
+ *                 cardCode: { containerId: 'card-code' },
+ *             },
+ *         },
+ *     },
+ * });
+ * ```
+ *
+ * Additional options can be passed in to customize the fields and register
+ * event callbacks.
+ *
+ * ```js
+ * service.initializePayment({
+ *     methodId: 'paypalcommerce',
+ *     creditCard: {
+ *         form: {
+ *             fields: {
+ *                 cardNumber: { containerId: 'card-number', placeholder: 'Number of card' },
+ *                 cardName: { containerId: 'card-name', placeholder: 'Name of card' },
+ *                 cardExpiry: { containerId: 'card-expiry', placeholder: 'Expiry of card' },
+ *                 cardCode: { containerId: 'card-code', placeholder: 'Code of card' },
+ *             },
+ *             styles: {
+ *                 default: {
+ *                     color: '#000',
+ *                 },
+ *                 error: {
+ *                     color: '#f00',
+ *                 },
+ *                 focus: {
+ *                     color: '#0f0',
+ *                 },
+ *             },
+ *             onBlur({ fieldType }) {
+ *                 console.log(fieldType);
+ *             },
+ *             onFocus({ fieldType }) {
+ *                 console.log(fieldType);
+ *             },
+ *             onEnter({ fieldType }) {
+ *                 console.log(fieldType);
+ *             },
+ *             onCardTypeChange({ cardType }) {
+ *                 console.log(cardType);
+ *             },
+ *             onValidate({ errors, isValid }) {
+ *                 console.log(errors);
+ *                 console.log(isValid);
+ *             },
+ *         },
+ *     },
+ * });
+ * ```
+ */
+declare interface PaypalCommerceCreditCardPaymentInitializeOptions {
+    /**
+     * The form is data for Credit Card Form
+     */
+    form: PaypalCommerceFormOptions;
+}
+
+declare type PaypalCommerceFormFieldBlurEventData = PaypalCommerceFormFieldKeyboardEventData;
+
+declare interface PaypalCommerceFormFieldCardTypeChangeEventData {
+    cardType?: string;
+}
+
+declare type PaypalCommerceFormFieldEnterEventData = PaypalCommerceFormFieldKeyboardEventData;
+
+declare type PaypalCommerceFormFieldFocusEventData = PaypalCommerceFormFieldKeyboardEventData;
+
+declare interface PaypalCommerceFormFieldKeyboardEventData {
+    fieldType: string;
+}
+
+declare interface PaypalCommerceFormFieldOptions {
+    containerId: string;
+    placeholder?: string;
+}
+
+declare type PaypalCommerceFormFieldStyles = Partial<Pick<CSSStyleDeclaration, 'color' | 'fontFamily' | 'fontSize' | 'fontWeight'>>;
+
+declare interface PaypalCommerceFormFieldStylesMap {
+    default?: PaypalCommerceFormFieldStyles;
+    error?: PaypalCommerceFormFieldStyles;
+    focus?: PaypalCommerceFormFieldStyles;
+}
+
+declare enum PaypalCommerceFormFieldType {
+    CardCode = "cardCode",
+    CardCodeVerification = "cardCodeVerification",
+    CardExpiry = "cardExpiry",
+    CardName = "cardName",
+    CardNumber = "cardNumber",
+    CardNumberVerification = "cardNumberVerification"
+}
+
+declare interface PaypalCommerceFormFieldValidateErrorData {
+    fieldType: string;
+    message: string;
+    type: string;
+}
+
+declare interface PaypalCommerceFormFieldValidateEventData {
+    errors: {
+        [PaypalCommerceFormFieldType.CardCode]?: PaypalCommerceFormFieldValidateErrorData[];
+        [PaypalCommerceFormFieldType.CardExpiry]?: PaypalCommerceFormFieldValidateErrorData[];
+        [PaypalCommerceFormFieldType.CardName]?: PaypalCommerceFormFieldValidateErrorData[];
+        [PaypalCommerceFormFieldType.CardNumber]?: PaypalCommerceFormFieldValidateErrorData[];
+        [PaypalCommerceFormFieldType.CardCodeVerification]?: PaypalCommerceFormFieldValidateErrorData[];
+        [PaypalCommerceFormFieldType.CardNumberVerification]?: PaypalCommerceFormFieldValidateErrorData[];
+    };
+    isValid: boolean;
+}
+
+declare interface PaypalCommerceFormFieldsMap {
+    [PaypalCommerceFormFieldType.CardCode]?: PaypalCommerceFormFieldOptions;
+    [PaypalCommerceFormFieldType.CardExpiry]: PaypalCommerceFormFieldOptions;
+    [PaypalCommerceFormFieldType.CardName]: PaypalCommerceFormFieldOptions;
+    [PaypalCommerceFormFieldType.CardNumber]: PaypalCommerceFormFieldOptions;
+}
+
+declare interface PaypalCommerceFormOptions {
+    /**
+     * Containers for fields can be to present in one set of values
+     *
+     * ```js
+     * { cardNumber: { containerId: 'card-number' },
+     *   cardName: { containerId: 'card-name' },
+     *   cardExpiry: { containerId: 'card-expiry' },
+     *   cardCode: { containerId: 'card-code' }, }
+     * ```
+     *
+     *   Or in another set of values.
+     *
+     * ```js
+     * { cardCodeVerification: { containerId: 'card-number' },
+     *   cardNumberVerification: { containerId: 'card-name' }, }
+     * ```
+     */
+    fields: PaypalCommerceFormFieldsMap | PaypalCommerceStoredCardFieldsMap;
+    /**
+     * Styles for inputs. Change the width, height and other styling.
+     *
+     * ```js
+     *  default: { color: '#000' },
+     *  error: { color: '#f00' },
+     *  focus: { color: '#0f0' }
+     * ```
+     */
+    styles?: PaypalCommerceFormFieldStylesMap;
+    /**
+     * A callback that gets called when a field loses focus.
+     */
+    onBlur?(data: PaypalCommerceFormFieldBlurEventData): void;
+    /**
+     * A callback that gets called when activity within
+     * the number field has changed such that the possible
+     * card type has changed.
+     */
+    onCardTypeChange?(data: PaypalCommerceFormFieldCardTypeChangeEventData): void;
+    /**
+     * A callback that gets called when a field gains focus.
+     */
+    onFocus?(data: PaypalCommerceFormFieldFocusEventData): void;
+    /**
+     * A callback that gets called when the validity of a field has changed.
+     */
+    onValidate?(data: PaypalCommerceFormFieldValidateEventData): void;
+    /**
+     * A callback that gets called when the user requests submission
+     * of an input field, by pressing the Enter or Return key
+     * on their keyboard, or mobile equivalent.
+     */
+    onEnter?(data: PaypalCommerceFormFieldEnterEventData): void;
+}
+
+/**
+ * A set of options that are required to initialize the PayPal Commerce payment
+ * method could be used for PayPal Smart Payment Buttons or PayPal Credit Card methods.
+ */
+declare type PaypalCommerceInitializeOptions = PaypalCommercePaymentInitializeOptions | PaypalCommerceCreditCardPaymentInitializeOptions;
+
+/**
+ * A set of options that are required to initialize the PayPal Commerce payment
+ * method for presenting its PayPal button.
+ *
+ * Please note that the minimum version of checkout-sdk is 1.100
+ *
+ * Also, PayPal (also known as PayPal Commerce Platform) requires specific options to initialize the PayPal Smart Payment Button on checkout page that substitutes a standard submit button
+ * ```html
+ * <!-- This is where the PayPal button will be inserted -->
+ * <div id="container"></div>
+ * ```
+ *
+ * ```js
+ * service.initializePayment({
+ *     methodId: 'paypalcommerce',
+ *     paypalcommerce: {
+ *         container: 'container',
+ * // Callback for submitting payment form that gets called when a buyer approves PayPal payment
+ *         submitForm: () => {
+ *             service.submitOrder(
+ *                {
+ *                   payment: { methodId: 'paypalcommerce', }
+ *               }
+ *            );
+ *         },
+ * // Callback is used to define the state of the payment form, validate if it is applicable for submit.
+ *         onValidate: (resolve, reject) => {
+ *             const isValid = service.validatePaymentForm();
+ *             if (isValid) {
+ *                 return resolve();
+ *             }
+ *             return reject();
+ *         },
+ * // Callback that is called right before render of a Smart Payment Button. It gets called when a buyer is eligible for use of the particular PayPal method. This callback can be used to hide the standard submit button.
+ *         onRenderButton: () => {
+ *             service.hidePaymentSubmitButton();
+ *         }
+ *     },
+ * });
+ * ```
+ */
+declare interface PaypalCommercePaymentInitializeOptions {
+    /**
+     * The ID of a container where the payment widget should be inserted into.
+     */
+    container: string;
+    /**
+     * A callback that gets called when a buyer click on Smart Payment Button
+     * and should validate payment form.
+     *
+     * @param resolve - A function, that gets called if form is valid.
+     * @param reject - A function, that gets called if form is not valid.
+     *
+     * @returns reject() or resolve()
+     */
+    onValidate(resolve: () => void, reject: () => void): Promise<void>;
+    /**
+     * A callback for submitting payment form that gets called
+     * when buyer approved PayPal account.
+     */
+    submitForm(): void;
+    /**
+     * A callback right before render Smart Payment Button that gets called when
+     * Smart Payment Button is eligible. This callback can be used to hide the standard submit button.
+     */
+    onRenderButton?(): void;
+    /**
+     * A callback for displaying error popup. This callback requires error object as parameter.
+     */
+    onError?(error: Error): void;
+}
+
+declare interface PaypalCommerceStoredCardFieldOptions extends PaypalCommerceFormFieldOptions {
+    instrumentId: string;
+}
+
+declare interface PaypalCommerceStoredCardFieldsMap {
+    [PaypalCommerceFormFieldType.CardCodeVerification]?: PaypalCommerceStoredCardFieldOptions;
+    [PaypalCommerceFormFieldType.CardNumberVerification]?: PaypalCommerceStoredCardFieldOptions;
+}
+
+/**
+ * A set of options that are required to initialize the PayPal Express payment
+ * method.
+ *
+ * ```js
+ * service.initializePayment({
+ *     methodId: 'paypalexpress',
+ * });
+ * ```
+ *
+ * An additional flag can be passed in to always start the payment flow through
+ * a redirect rather than a popup.
+ *
+ * ```js
+ * service.initializePayment({
+ *     methodId: 'paypalexpress',
+ *     paypalexpress: {
+ *         useRedirectFlow: true,
+ *     },
+ * });
+ * ```
+ */
 declare interface PaypalExpressPaymentInitializeOptions {
     useRedirectFlow?: boolean;
 }
@@ -2975,24 +4985,6 @@ declare interface PhysicalItem extends LineItem {
 
 declare interface Promotion {
     banners: Banner[];
-}
-
-declare interface Properties {
-    color?: string;
-    fontFamily?: string;
-    fontSize?: string;
-    fontSmoothing?: string;
-    fontStyle?: string;
-    fontVariant?: string;
-    fontWeight?: string | number;
-    iconColor?: string;
-    lineHeight?: string | number;
-    letterSpacing?: string;
-    textAlign?: string;
-    padding?: string;
-    textDecoration?: string;
-    textShadow?: string;
-    textTransform?: string;
 }
 
 declare interface Region {
@@ -3039,6 +5031,11 @@ declare interface RequestOptions<TParams = {}> {
     params?: TParams;
 }
 
+declare interface SepaPlaceHolder {
+    ownerName?: string;
+    ibanNumber?: string;
+}
+
 /**
  * A set of options that are required to initialize the shipping step of the
  * current checkout flow.
@@ -3049,15 +5046,21 @@ declare interface RequestOptions<TParams = {}> {
  * need to provide additional information in order to initialize the shipping
  * step of checkout.
  */
-declare interface ShippingInitializeOptions extends ShippingRequestOptions {
+declare interface ShippingInitializeOptions<T = {}> extends ShippingRequestOptions<T> {
     /**
      * The options that are required to initialize the shipping step of checkout
      * when using Amazon Pay.
      */
     amazon?: AmazonPayShippingInitializeOptions;
+    /**
+     * The options that are required to initialize the shipping step of checkout
+     * when using AmazonPayV2.
+     */
+    amazonpay?: AmazonPayV2ShippingInitializeOptions;
 }
 
 declare interface ShippingOption {
+    additionalDescription: string;
     description: string;
     id: string;
     isRecommended: boolean;
@@ -3076,7 +5079,7 @@ declare interface ShippingOption {
  * specific flow for setting the shipping address or option. Otherwise, these
  * options are not required.
  */
-declare interface ShippingRequestOptions extends RequestOptions {
+declare interface ShippingRequestOptions<T = {}> extends RequestOptions<T> {
     methodId?: string;
 }
 
@@ -3089,6 +5092,16 @@ declare interface ShopperConfig {
 declare interface ShopperCurrency extends StoreCurrency {
     exchangeRate: number;
     isTransactional: boolean;
+}
+
+declare interface SignInEmail {
+    sent_email: string;
+    expiry: number;
+}
+
+declare interface SignInEmailRequestBody {
+    email: string;
+    redirectUrl?: string;
 }
 
 /**
@@ -3121,6 +5134,73 @@ declare interface SquareFormElement {
  * Once Square payment is initialized, credit card form fields, provided by the
  * payment provider as iframes, will be inserted into the current page. These
  * options provide a location and styling for each of the form fields.
+ *
+ * ```html
+ * <!-- These containers are where the hosted (iframed) credit card fields will be inserted -->
+ * <div id="card-number"></div>
+ * <div id="card-name"></div>
+ * <div id="card-expiry"></div>
+ * <div id="card-code"></div>
+ * ```
+ *
+ * ```js
+ * service.initializePayment({
+ *     methodId: 'squarev2',
+ *     square: {
+ *         cardNumber: {
+ *             elementId: 'card-number',
+ *         },
+ *         cvv: {
+ *             elementId: 'card-code',
+ *         },
+ *         expirationDate: {
+ *             elementId: 'card-expiry',
+ *         },
+ *         postalCode: {
+ *             elementId: 'card-code',
+ *         },
+ *     },
+ * });
+ * ```
+ *
+ * Additional options can be passed in to enable Masterpass (if configured for
+ * the account) and customize the fields.
+ *
+ * ```html
+ * <!-- This container is where Masterpass button will be inserted -->
+ * <div id="masterpass"></div>
+ * ```
+ *
+ * ```js
+ * service.initializePayment({
+ *     methodId: 'squarev2',
+ *     square: {
+ *         cardNumber: {
+ *             elementId: 'card-number',
+ *         },
+ *         cvv: {
+ *             elementId: 'card-code',
+ *         },
+ *         expirationDate: {
+ *             elementId: 'card-expiry',
+ *         },
+ *         postalCode: {
+ *             elementId: 'card-code',
+ *         },
+ *         inputClass: 'form-input',
+ *         inputStyles: [
+ *             {
+ *                 color: '#333',
+ *                 fontSize: '13px',
+ *                 lineHeight: '20px',
+ *             },
+ *         ],
+ *         masterpass: {
+ *             elementId: 'masterpass',
+ *         },
+ *     },
+ * });
+ * ```
  */
 declare interface SquarePaymentInitializeOptions {
     /**
@@ -3177,10 +5257,33 @@ declare interface StepStyles extends BlockElementStyles {
     icon?: BlockElementStyles;
 }
 
+declare interface StepTracker {
+    trackOrderComplete(): void;
+    trackCheckoutStarted(): void;
+    trackStepViewed(step: string): void;
+    trackStepCompleted(step: string): void;
+}
+
+declare interface StepTrackerConfig {
+    checkoutSteps?: AnalyticStepType[];
+}
+
 declare interface StoreConfig {
     cdnPath: string;
     checkoutSettings: CheckoutSettings;
     currency: StoreCurrency;
+    displayDateFormat: string;
+    inputDateFormat: string;
+    /**
+     * @deprecated Please use instead the data selectors
+     * @remarks
+     * ```js
+     * const data = CheckoutService.getState().data;
+     * const shippingAddressFields = data.getShippingAddressFields('US');
+     * const billingAddressFields = data.getBillingAddressFields('US');
+     * const customerAccountFields = data.getCustomerAccountFields();
+     * ```
+     */
     formFields: FormFields;
     links: StoreLinks;
     paymentSettings: PaymentSettings;
@@ -3221,38 +5324,151 @@ declare interface StoreProfile {
     storeLanguage: string;
 }
 
-declare interface StripeStyleProps {
+/**
+ * CSS properties supported by Stripe.js.
+ */
+declare interface StripeElementCSSProperties {
     /**
-     * The base class applied to the container.
-     * Defaults to StripeElement.
+     * The [background-color](https://developer.mozilla.org/en-US/docs/Web/CSS/background-color) CSS property.
+     *
+     * This property works best with the `::selection` pseudo-class.
+     * In other cases, consider setting the background color on the element's container instaed.
      */
-    base?: CardElementProps;
+    backgroundColor?: string;
     /**
-     * The class name to apply when the Element is complete.
-     * Defaults to StripeElement--complete.
+     * The [color](https://developer.mozilla.org/en-US/docs/Web/CSS/color) CSS property.
      */
-    complete?: CardElementProps;
+    color?: string;
     /**
-     * The class name to apply when the Element is empty.
-     * Defaults to StripeElement--empty.
+     * The [font-family](https://developer.mozilla.org/en-US/docs/Web/CSS/font-family) CSS property.
      */
-    empty?: CardElementProps;
+    fontFamily?: string;
     /**
-     * The class name to apply when the Element is focused.
-     * Defaults to StripeElement--focus.
+     * The [font-size](https://developer.mozilla.org/en-US/docs/Web/CSS/font-size) CSS property.
      */
-    focus?: CardElementProps;
+    fontSize?: string;
     /**
-     * The class name to apply when the Element is invalid.
-     * Defaults to StripeElement--invalid.
+     * The [font-smoothing](https://developer.mozilla.org/en-US/docs/Web/CSS/font-smoothing) CSS property.
      */
-    invalid?: CardElementProps;
+    fontSmoothing?: string;
     /**
-     * The class name to apply when the Element has its value
-     * autofilled by the browser (only on Chrome and Safari).
-     * Defaults to StripeElement--webkit-autofill.
+     * The [font-style](https://developer.mozilla.org/en-US/docs/Web/CSS/font-style) CSS property.
      */
-    webkitAutofill?: CardElementProps;
+    fontStyle?: string;
+    /**
+     * The [font-variant](https://developer.mozilla.org/en-US/docs/Web/CSS/font-variant) CSS property.
+     */
+    fontVariant?: string;
+    /**
+     * The [font-weight](https://developer.mozilla.org/en-US/docs/Web/CSS/font-weight) CSS property.
+     */
+    fontWeight?: string;
+    /**
+     * A custom property, used to set the color of the icons that are rendered in an element.
+     */
+    iconColor?: string;
+    /**
+     * The [line-height](https://developer.mozilla.org/en-US/docs/Web/CSS/line-height) CSS property.
+     *
+     * To avoid cursors being rendered inconsistently across browsers, consider using a padding on the element's container instead.
+     */
+    lineHeight?: string;
+    /**
+     * The [letter-spacing](https://developer.mozilla.org/en-US/docs/Web/CSS/letter-spacing) CSS property.
+     */
+    letterSpacing?: string;
+    /**
+     * The [text-align](https://developer.mozilla.org/en-US/docs/Web/CSS/text-align) CSS property.
+     *
+     * Available for the `cardNumber`, `cardExpiry`, and `cardCvc` elements.
+     */
+    textAlign?: string;
+    /**
+     * The [padding](https://developer.mozilla.org/en-US/docs/Web/CSS/padding) CSS property.
+     *
+     * Available for the `idealBank` element.
+     * Accepts integer `px` values.
+     */
+    padding?: string;
+    /**
+     * The [text-decoration](https://developer.mozilla.org/en-US/docs/Web/CSS/text-decoration) CSS property.
+     */
+    textDecoration?: string;
+    /**
+     * The [text-shadow](https://developer.mozilla.org/en-US/docs/Web/CSS/text-shadow) CSS property.
+     */
+    textShadow?: string;
+    /**
+     * The [text-transform](https://developer.mozilla.org/en-US/docs/Web/CSS/text-transform) CSS property.
+     */
+    textTransform?: string;
+}
+
+declare interface StripeElementClasses {
+    /**
+     * The base class applied to the container. Defaults to StripeElement.
+     */
+    base?: string;
+    /**
+     * The class name to apply when the Element is complete. Defaults to StripeElement--complete.
+     */
+    complete?: string;
+    /**
+     * The class name to apply when the Element is empty. Defaults to StripeElement--empty.
+     */
+    empty?: string;
+    /**
+     * The class name to apply when the Element is focused. Defaults to StripeElement--focus.
+     */
+    focus?: string;
+    /**
+     * The class name to apply when the Element is invalid. Defaults to StripeElement--invalid.
+     */
+    invalid?: string;
+    /**
+     * The class name to apply when the Element has its value autofilled by the browser
+     * (only on Chrome and Safari). Defaults to StripeElement--webkit-autofill.
+     */
+    webkitAutoFill?: string;
+}
+
+declare type StripeElementOptions = CardElementOptions | CardExpiryElementOptions | CardNumberElementOptions | CardCvcElementOptions | IdealElementOptions | IbanElementOptions | ZipCodeElementOptions;
+
+declare interface StripeElementStyle {
+    /**
+     * Base variant—all other variants inherit from these styles.
+     */
+    base?: StripeElementStyleVariant;
+    /**
+     * Applied when the element has valid input.
+     */
+    complete?: StripeElementStyleVariant;
+    /**
+     * Applied when the element has no customer input.
+     */
+    empty?: StripeElementStyleVariant;
+    /**
+     * Applied when the element has invalid input.
+     */
+    invalid?: StripeElementStyleVariant;
+}
+
+declare interface StripeElementStyleVariant extends StripeElementCSSProperties {
+    ':hover'?: StripeElementCSSProperties;
+    ':focus'?: StripeElementCSSProperties;
+    '::placeholder'?: StripeElementCSSProperties;
+    '::selection'?: StripeElementCSSProperties;
+    ':-webkit-autofill'?: StripeElementCSSProperties;
+    /**
+     * Available for all elements except the `paymentRequestButton` element
+     */
+    ':disabled'?: StripeElementCSSProperties;
+    /**
+     * Available for the `cardNumber`, `cardExpiry`, and `cardCvc` elements.
+     */
+    '::-ms-clear'?: StripeElementCSSProperties & {
+        display: string;
+    };
 }
 
 /**
@@ -3261,16 +5477,128 @@ declare interface StripeStyleProps {
  * Once Stripe payment is initialized, credit card form fields, provided by the
  * payment provider as iframes, will be inserted into the current page. These
  * options provide a location and styling for each of the form fields.
+ *
+ * ```html
+ * <!-- This is where the credit card component will be inserted -->
+ * <div id="container"></div>
+ * ```
+ *
+ * ```js
+ * service.initializePayment({
+ *     methodId: 'stripev3',
+ *     stripev3: {
+ *         containerId: 'container',
+ *     },
+ * });
+ * ```
+ *
+ * Additional options can be passed in to customize the fields.
+ *
+ * ```js
+ * service.initializePayment({
+ *     methodId: 'stripev3',
+ *     stripev3: {
+ *         containerId: 'container',
+ *         options: {
+ *             card: {
+ *                 classes: { base: 'form-input' },
+ *             },
+ *             iban: {
+ *                 classes: { base: 'form-input' },
+ *                 supportedCountries: ['SEPA],
+ *             },
+ *             idealBank: {
+ *                 classes: { base: 'form-input' },
+ *             },
+ *         },
+ *     },
+ * });
+ * ```
  */
 declare interface StripeV3PaymentInitializeOptions {
     /**
      * The location to insert the credit card number form field.
      */
     containerId: string;
+    options?: StripeElementOptions | IndividualCardElementOptions;
+}
+
+declare enum StyleButtonColor {
+    gold = "gold",
+    blue = "blue",
+    silver = "silver",
+    black = "black",
+    white = "white"
+}
+
+declare enum StyleButtonLabel {
+    paypal = "paypal",
+    checkout = "checkout",
+    buynow = "buynow",
+    pay = "pay",
+    installment = "installment"
+}
+
+declare enum StyleButtonLayout {
+    vertical = "vertical",
+    horizontal = "horizontal"
+}
+
+declare enum StyleButtonShape {
+    pill = "pill",
+    rect = "rect"
+}
+
+declare interface StyleOptions {
     /**
-     * The set of CSS styles to apply to all form fields.
+     * Base styling applied to the iframe. All styling extends from this style.
      */
-    style?: StripeStyleProps;
+    base?: CssProperties;
+    /**
+     * Styling applied when a field fails validation.
+     */
+    error?: CssProperties;
+    /**
+     * Styling applied to the field's placeholder values.
+     */
+    placeholder?: CssProperties;
+    /**
+     * Styling applied once a field passes validation.
+     */
+    validated?: CssProperties;
+}
+
+declare interface SubInputDetail {
+    /**
+     * Configuration parameters for the required input.
+     */
+    configuration?: object;
+    /**
+     * In case of a select, the items to choose from.
+     */
+    items?: Item[];
+    /**
+     * The value to provide in the result.
+     */
+    key?: string;
+    /**
+     * True if this input is optional to provide.
+     */
+    optional?: boolean;
+    /**
+     * The type of the required input.
+     */
+    type?: string;
+    /**
+     * The value can be pre-filled, if available.
+     */
+    value?: string;
+}
+
+declare interface Subscriptions {
+    email: string;
+    acceptsMarketingNewsletter: boolean;
+    acceptsAbandonedCartEmails: boolean;
 }
 
 declare interface Tax {
@@ -3307,6 +5635,22 @@ declare interface VaultedInstrument {
     instrumentId: string;
     ccCvv?: string;
     ccNumber?: string;
+}
+
+declare interface WechatDataPaymentMethodState {
+    paymentMethod: AdyenPaymentMethodState;
+}
+
+declare interface WechatState {
+    data: WechatDataPaymentMethodState;
+}
+
+declare interface WithDocumentInstrument {
+    ccDocument: string;
+}
+
+declare interface ZipCodeElementOptions {
+    containerId: string;
 }
 
 /**
@@ -3367,11 +5711,6 @@ export declare function createCheckoutService(options?: CheckoutServiceOptions):
  * currencyService.toCustomerCurrency(checkout.grandTotal);
  * ```
  *
- * @alpha
- * Please note that `CurrencyService` is currently in an early stage
- * of development. Therefore the API is unstable and not ready for public
- * consumption.
- *
  * @param config - The config object containing the currency configuration
  * @returns an instance of `CurrencyService`.
  */
@@ -3419,6 +5758,24 @@ export declare function createEmbeddedCheckoutMessenger(options: EmbeddedCheckou
  * @returns An instance of `LanguageService`.
  */
 export declare function createLanguageService(config?: Partial<LanguageConfig>): LanguageService;
+
+/**
+ * Creates an instance of `StepTracker`.
+ *
+ * @remarks
+ * ```js
+ * const checkoutService = createCheckoutService();
+ * await checkoutService.loadCheckout();
+ * const stepTracker = createStepTracker(checkoutService);
+ *
+ * stepTracker.trackCheckoutStarted();
+ * ```
+ *
+ * @param CheckoutService - An instance of CheckoutService
+ * @param StepTrackerConfig - A step tracker config object
+ * @returns an instance of `StepTracker`.
+ */
+export declare function createStepTracker(checkoutService: CheckoutService, stepTrackerConfig?: StepTrackerConfig): StepTracker;
 
 /**
  * Embed the checkout form in an iframe.

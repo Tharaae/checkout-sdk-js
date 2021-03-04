@@ -1,27 +1,30 @@
-import { ScriptLoader } from '@bigcommerce/script-loader';
+import { ScriptLoader, StylesheetLoader } from '@bigcommerce/script-loader';
 
 import { PaymentMethodClientUnavailableError } from '../../errors';
 
 import { AdyenHostWindow } from './adyenv2';
 import AdyenV2ScriptLoader from './adyenv2-script-loader';
-import { getAdyenCheckout, getAdyenConfiguration } from './adyenv2.mock';
+import { getAdyenClient, getAdyenConfiguration } from './adyenv2.mock';
 
 describe('AdyenV2ScriptLoader', () => {
     let adyenV2ScriptLoader: AdyenV2ScriptLoader;
     let scriptLoader: ScriptLoader;
+    let stylesheetLoader: StylesheetLoader;
     let mockWindow: AdyenHostWindow;
 
     beforeEach(() => {
-        mockWindow = { } as AdyenHostWindow;
+        mockWindow = {} as AdyenHostWindow;
         scriptLoader = {} as ScriptLoader;
-        adyenV2ScriptLoader = new AdyenV2ScriptLoader(scriptLoader, mockWindow);
+        stylesheetLoader = {} as StylesheetLoader;
+        adyenV2ScriptLoader = new AdyenV2ScriptLoader(scriptLoader, stylesheetLoader, mockWindow);
     });
 
     describe('#load()', () => {
-        const adyenClient = getAdyenCheckout();
+        const adyenClient = getAdyenClient();
         const configuration = getAdyenConfiguration();
-        const stylesheet = document.createElement('link');
-        const jsUlr = `https://checkoutshopper-test.adyen.com/checkoutshopper/sdk/3.0.0/adyen.js`;
+        const configurationWithClientKey = getAdyenConfiguration(false);
+        const jsUrl = 'https://checkoutshopper-test.adyen.com/checkoutshopper/sdk/3.10.1/adyen.js';
+        const cssUrl = 'https://checkoutshopper-test.adyen.com/checkoutshopper/sdk/3.10.1/adyen.css';
 
         beforeEach(() => {
             scriptLoader.loadScript = jest.fn(() => {
@@ -32,17 +35,7 @@ describe('AdyenV2ScriptLoader', () => {
                 return Promise.resolve();
             });
 
-            stylesheet.type = 'text/css';
-            stylesheet.rel = 'stylesheet';
-            stylesheet.href = 'https://checkoutshopper-test.adyen.com/checkoutshopper/sdk/3.0.0/adyen.css';
-
-            jest.spyOn(document, 'createElement')
-                .mockImplementation(() => stylesheet);
-
-            jest.spyOn(document.head, 'appendChild')
-                .mockImplementation(element => {
-                    element.onload(new Event('onload'));
-                });
+            stylesheetLoader.loadStylesheet = jest.fn(() => Promise.resolve());
         });
 
         afterEach(() => {
@@ -52,20 +45,18 @@ describe('AdyenV2ScriptLoader', () => {
         it('loads the JS and CSS', async () => {
             await adyenV2ScriptLoader.load(configuration);
 
-            expect(scriptLoader.loadScript).toHaveBeenCalledWith(jsUlr);
-            expect(document.head.appendChild).toHaveBeenCalledWith(stylesheet);
+            expect(scriptLoader.loadScript).toHaveBeenCalledWith(jsUrl);
+            expect(stylesheetLoader.loadStylesheet).toHaveBeenCalledWith(cssUrl);
         });
 
-        it('loads the JS and returns the existing CSS', async () => {
-            await adyenV2ScriptLoader.load(configuration);
-            await adyenV2ScriptLoader.load(configuration);
-
-            expect(scriptLoader.loadScript).toHaveBeenCalledWith(jsUlr);
-            expect(document.head.appendChild).toHaveBeenCalledWith(stylesheet);
-        });
-
-        it('returns the JS from the window', async () => {
+        it('returns the JS from the window using originKey', async () => {
             const adyenJs = await adyenV2ScriptLoader.load(configuration);
+
+            expect(adyenJs).toBe(adyenClient);
+        });
+
+        it('returns the JS from the window using clientKey', async () => {
+            const adyenJs = await adyenV2ScriptLoader.load(configurationWithClientKey);
 
             expect(adyenJs).toBe(adyenClient);
         });
@@ -76,19 +67,6 @@ describe('AdyenV2ScriptLoader', () => {
 
                 return Promise.resolve();
             });
-
-            try {
-                await adyenV2ScriptLoader.load(configuration);
-            } catch (error) {
-                expect(error).toBeInstanceOf(PaymentMethodClientUnavailableError);
-            }
-        });
-
-        it('throws an error when stylesheet is not loaded', async () => {
-            jest.spyOn(document.head, 'appendChild')
-                .mockImplementation(element => {
-                    element.onerror(new Event('onerror'));
-                });
 
             try {
                 await adyenV2ScriptLoader.load(configuration);

@@ -1,6 +1,7 @@
 import { getShippingAddress } from '../shipping/shipping-addresses.mock';
 
 import Customer from './customer';
+import CustomerState from './customer-state';
 
 export function getGuestCustomer(): Customer {
     return {
@@ -12,6 +13,11 @@ export function getGuestCustomer(): Customer {
         isGuest: true,
         lastName: '',
         storeCredit: 0,
+        shouldEncourageSignIn: false,
+        customerGroup: {
+            id: 0,
+            name: '',
+        },
     };
 }
 
@@ -23,6 +29,7 @@ export function getCustomer(): Customer {
         fullName: 'Foo Bar',
         lastName: 'Bar',
         storeCredit: 0,
+        shouldEncourageSignIn: false,
         addresses: [
             {
                 ...getShippingAddress(),
@@ -31,11 +38,17 @@ export function getCustomer(): Customer {
             },
         ],
         isGuest: false,
+        customerGroup: {
+            id: 1,
+            name: 'vip',
+        },
     };
 }
 
-export function getCustomerState() {
+export function getCustomerState(): CustomerState {
     return {
         data: getCustomer(),
+        errors: {},
+        statuses: {},
     };
 }

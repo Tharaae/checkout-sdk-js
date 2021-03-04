@@ -1,57 +1,55 @@
-[@bigcommerce/checkout-sdk](../README.md) > [CheckoutButtonOptions](../interfaces/checkoutbuttonoptions.md)
+[@bigcommerce/checkout-sdk](../README.md) › [CheckoutButtonOptions](checkoutbuttonoptions.md)
 
-# CheckoutButtonOptions
+# Interface: CheckoutButtonOptions ‹**TParams**›
 
 The set of options for configuring the checkout button.
 
 ## Type parameters
 
-#### TParams 
+▪ **TParams**
+
 ## Hierarchy
 
- [RequestOptions](requestoptions.md)
+* [RequestOptions](requestoptions.md)
 
-**↳ CheckoutButtonOptions**
+  ↳ **CheckoutButtonOptions**
 
-↳  [CheckoutButtonInitializeOptions](checkoutbuttoninitializeoptions.md)
+  ↳ [CheckoutButtonInitializeOptions](checkoutbuttoninitializeoptions.md)
 
 ## Index
 
 ### Properties
 
 * [methodId](checkoutbuttonoptions.md#methodid)
-* [params](checkoutbuttonoptions.md#params)
-* [timeout](checkoutbuttonoptions.md#timeout)
-
----
+* [params](checkoutbuttonoptions.md#optional-params)
+* [timeout](checkoutbuttonoptions.md#optional-timeout)
 
 ## Properties
 
-<a id="methodid"></a>
-
 ###  methodId
 
-**● methodId**: *[CheckoutButtonMethodType](../enums/checkoutbuttonmethodtype.md)*
+• **methodId**: *[CheckoutButtonMethodType](../enums/checkoutbuttonmethodtype.md)*
 
 The identifier of the payment method.
 
 ___
-<a id="params"></a>
 
-### `<Optional>` params
+### `Optional` params
 
-**● params**: *[TParams]()*
+• **params**? : *TParams*
+
+*Inherited from [CheckoutButtonInitializeOptions](checkoutbuttoninitializeoptions.md).[params](checkoutbuttoninitializeoptions.md#optional-params)*
 
 The parameters of the request, if required.
 
 ___
-<a id="timeout"></a>
 
-### `<Optional>` timeout
+### `Optional` timeout
 
-**● timeout**: *`Timeout`*
+• **timeout**? : *Timeout*
 
-Provide this option if you want to cancel or time out the request. If the timeout object completes before the request, the request will be cancelled.
+*Inherited from [CheckoutButtonInitializeOptions](checkoutbuttoninitializeoptions.md).[timeout](checkoutbuttoninitializeoptions.md#optional-timeout)*
 
-___
-
+Provide this option if you want to cancel or time out the request. If the
+timeout object completes before the request, the request will be
+cancelled.

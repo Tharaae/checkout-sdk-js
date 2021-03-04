@@ -5,16 +5,21 @@ import { getScriptLoader } from '@bigcommerce/script-loader';
 import { CheckoutActionCreator, CheckoutRequestSender, CheckoutStore } from '../checkout';
 import { Registry } from '../common/registry';
 import { ConfigActionCreator, ConfigRequestSender } from '../config';
+import { FormFieldsActionCreator, FormFieldsRequestSender } from '../form';
+import { createAmazonPayV2PaymentProcessor } from '../payment/strategies/amazon-pay-v2';
 import { BraintreeScriptLoader, BraintreeSDKCreator } from '../payment/strategies/braintree';
-import { createGooglePayPaymentProcessor, GooglePayBraintreeInitializer, GooglePayStripeInitializer } from '../payment/strategies/googlepay';
+import { createGooglePayPaymentProcessor, GooglePayAdyenV2Initializer, GooglePayAuthorizeNetInitializer, GooglePayBraintreeInitializer, GooglePayCheckoutcomInitializer, GooglePayCybersourceV2Initializer, GooglePayStripeInitializer } from '../payment/strategies/googlepay';
 import { MasterpassScriptLoader } from '../payment/strategies/masterpass';
 import { PaypalScriptLoader } from '../payment/strategies/paypal';
+import { createPaypalCommercePaymentProcessor } from '../payment/strategies/paypal-commerce';
 
 import { CheckoutButtonMethodType, CheckoutButtonStrategy } from './strategies';
+import { AmazonPayV2ButtonStrategy } from './strategies/amazon-pay-v2';
 import { BraintreePaypalButtonStrategy } from './strategies/braintree';
 import { GooglePayButtonStrategy } from './strategies/googlepay';
 import { MasterpassButtonStrategy } from './strategies/masterpass';
 import { PaypalButtonStrategy } from './strategies/paypal';
+import { PaypalCommerceButtonStrategy } from './strategies/paypal-commerce';
 
 export default function createCheckoutButtonRegistry(
     store: CheckoutStore,
@@ -26,8 +31,10 @@ export default function createCheckoutButtonRegistry(
     const scriptLoader = getScriptLoader();
     const checkoutActionCreator = new CheckoutActionCreator(
         new CheckoutRequestSender(requestSender),
-        new ConfigActionCreator(new ConfigRequestSender(requestSender))
+        new ConfigActionCreator(new ConfigRequestSender(requestSender)),
+        new FormFieldsActionCreator(new FormFieldsRequestSender(requestSender))
     );
+    const paypalCommercePaymentProcessor = createPaypalCommercePaymentProcessor(scriptLoader, requestSender);
 
     registry.register(CheckoutButtonMethodType.BRAINTREE_PAYPAL, () =>
         new BraintreePaypalButtonStrategy(
@@ -57,6 +64,30 @@ export default function createCheckoutButtonRegistry(
             new MasterpassScriptLoader(scriptLoader)
         ));
 
+    registry.register(CheckoutButtonMethodType.GOOGLEPAY_ADYENV2, () =>
+        new GooglePayButtonStrategy(
+            store,
+            formPoster,
+            checkoutActionCreator,
+            createGooglePayPaymentProcessor(
+                store,
+                new GooglePayAdyenV2Initializer()
+            )
+        )
+    );
+
+    registry.register(CheckoutButtonMethodType.GOOGLEPAY_AUTHORIZENET, () =>
+        new GooglePayButtonStrategy(
+            store,
+            formPoster,
+            checkoutActionCreator,
+            createGooglePayPaymentProcessor(
+                store,
+                new GooglePayAuthorizeNetInitializer()
+            )
+        )
+    );
+
     registry.register(CheckoutButtonMethodType.GOOGLEPAY_BRAINTREE, () =>
         new GooglePayButtonStrategy(
             store,
@@ -69,6 +100,30 @@ export default function createCheckoutButtonRegistry(
                         new BraintreeScriptLoader(scriptLoader)
                     )
                 )
+            )
+        )
+    );
+
+    registry.register(CheckoutButtonMethodType.GOOGLEPAY_CHECKOUTCOM, () =>
+        new GooglePayButtonStrategy(
+            store,
+            formPoster,
+            checkoutActionCreator,
+            createGooglePayPaymentProcessor(
+                store,
+                new GooglePayCheckoutcomInitializer(requestSender)
+            )
+        )
+    );
+
+    registry.register(CheckoutButtonMethodType.GOOGLEPAY_CYBERSOURCEV2, () =>
+        new GooglePayButtonStrategy(
+            store,
+            formPoster,
+            checkoutActionCreator,
+            createGooglePayPaymentProcessor(
+                store,
+                new GooglePayCybersourceV2Initializer()
             )
         )
     );
@@ -92,6 +147,23 @@ export default function createCheckoutButtonRegistry(
             new PaypalScriptLoader(scriptLoader),
             formPoster,
             host
+        )
+    );
+
+    registry.register(CheckoutButtonMethodType.PAYPALCOMMERCE, () =>
+        new PaypalCommerceButtonStrategy(
+            store,
+            checkoutActionCreator,
+            formPoster,
+            paypalCommercePaymentProcessor
+        )
+    );
+
+    registry.register(CheckoutButtonMethodType.AMAZON_PAY_V2, () =>
+        new AmazonPayV2ButtonStrategy(
+            store,
+            checkoutActionCreator,
+            createAmazonPayV2PaymentProcessor()
         )
     );
 

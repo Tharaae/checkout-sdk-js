@@ -3,12 +3,12 @@ import PaymentMethod from '../../payment-method';
 import { BraintreeModuleCreator, GooglePayBraintreeSDK } from '../braintree';
 
 export type EnvironmentType = 'PRODUCTION' | 'TEST';
-type TokenizeType = 'AndroidPayCard' | 'CreditCard';
+export type TokenizeType = 'AndroidPayCard' | 'CreditCard' | 'CARD';
 
 export interface GooglePayInitializer {
     initialize(checkout: Checkout, paymentMethod: PaymentMethod, hasShippingAddress: boolean, publishableKey?: string): Promise<GooglePayPaymentDataRequestV2>;
     teardown(): Promise<void>;
-    parseResponse(paymentData: GooglePaymentData): TokenizePayload;
+    parseResponse(paymentData: GooglePaymentData): Promise<TokenizePayload>;
 }
 
 export interface GooglePayCreator extends BraintreeModuleCreator<GooglePayBraintreeSDK> {}
@@ -123,6 +123,32 @@ export enum ButtonColor {
     White = 'white',
 }
 
+export interface TokenizationSpecification {
+    type: string;
+    parameters: {
+        gateway: string;
+        gatewayMerchantId?: string;
+        'braintree:apiVersion'?: string;
+        'braintree:clientKey'?: string;
+        'braintree:merchantId'?: string;
+        'braintree:sdkVersion'?: string;
+        'braintree:authorizationFingerprint'?: string;
+        'stripe:version'?: string;
+        'stripe:publishableKey'?: string;
+    };
+}
+
+export enum BillingAddressFormat {
+    /*
+     * Name, country code, and postal code (default).
+     */
+    Min = 'MIN',
+    /*
+     * Name, street address, locality, region, country code, and postal code.
+     */
+    Full = 'FULL',
+}
+
 export interface GooglePayPaymentDataRequestV2 {
     apiVersion: number;
     apiVersionMinor: number;
@@ -139,27 +165,15 @@ export interface GooglePayPaymentDataRequestV2 {
             allowPrepaidCards?: boolean;
             billingAddressRequired?: boolean;
             billingAddressParameters?: {
-                format?: string;
+                format?: BillingAddressFormat;
                 phoneNumberRequired?: boolean;
             };
         };
-        tokenizationSpecification?: {
-            type: string;
-            parameters: {
-                gateway: string;
-                gatewayMerchantId?: string;
-                'braintree:apiVersion'?: string;
-                'braintree:clientKey'?: string;
-                'braintree:merchantId'?: string;
-                'braintree:sdkVersion'?: string;
-                'braintree:authorizationFingerprint'?: string;
-                'stripe:version'?: string;
-                'stripe:publishableKey'?: string;
-            };
-        };
+        tokenizationSpecification?: TokenizationSpecification;
     }];
     transactionInfo: {
         currencyCode: string;
+        countryCode?: string;
         totalPriceStatus: string;
         totalPrice?: string;
         checkoutOption?: string;

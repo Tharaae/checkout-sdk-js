@@ -11,7 +11,7 @@ import { FinalizeOrderAction, OrderActionCreator, OrderActionType, OrderRequestB
 import { OrderFinalizationNotRequiredError } from '../../../order/errors';
 import { getIncompleteOrder, getOrderRequestBody, getSubmittedOrder } from '../../../order/internal-orders.mock';
 import { getOrder } from '../../../order/orders.mock';
-import { createSpamProtection, SpamProtectionActionCreator } from '../../../order/spam-protection';
+import { createSpamProtection, PaymentHumanVerificationHandler } from '../../../spam-protection';
 import PaymentActionCreator from '../../payment-action-creator';
 import { InitializeOffsitePaymentAction, PaymentActionType } from '../../payment-actions';
 import { PaymentRequestOptions } from '../../payment-request-options';
@@ -36,13 +36,13 @@ describe('OffsitePaymentStrategy', () => {
         store = createCheckoutStore(getCheckoutStoreState());
         orderActionCreator = new OrderActionCreator(
             new OrderRequestSender(createRequestSender()),
-            new CheckoutValidator(new CheckoutRequestSender(createRequestSender())),
-            new SpamProtectionActionCreator(createSpamProtection(createScriptLoader()))
+            new CheckoutValidator(new CheckoutRequestSender(createRequestSender()))
         );
         paymentActionCreator = new PaymentActionCreator(
             new PaymentRequestSender(createPaymentClient()),
             orderActionCreator,
-            new PaymentRequestTransformer()
+            new PaymentRequestTransformer(),
+            new PaymentHumanVerificationHandler(createSpamProtection(createScriptLoader()))
         );
         finalizeOrderAction = of(createAction(OrderActionType.FinalizeOrderRequested));
         initializeOffsitePaymentAction = of(createAction(PaymentActionType.InitializeOffsitePaymentRequested));
@@ -105,7 +105,10 @@ describe('OffsitePaymentStrategy', () => {
     it('initializes offsite payment flow', async () => {
         await strategy.execute(payload, options);
 
-        expect(paymentActionCreator.initializeOffsitePayment).toHaveBeenCalledWith(options.methodId, options.gatewayId);
+        expect(paymentActionCreator.initializeOffsitePayment).toHaveBeenCalledWith({
+            methodId: options.methodId,
+            gatewayId: options.gatewayId,
+        });
         expect(store.dispatch).toHaveBeenCalledWith(initializeOffsitePaymentAction);
     });
 

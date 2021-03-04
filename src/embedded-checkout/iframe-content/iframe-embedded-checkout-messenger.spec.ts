@@ -1,7 +1,6 @@
 import { CartChangedError } from '../../cart/errors';
+import { IframeEventListener, IframeEventPoster } from '../../common/iframe';
 import { EmbeddedCheckoutEvent, EmbeddedCheckoutEventType } from '../embedded-checkout-events';
-import IframeEventListener from '../iframe-event-listener';
-import IframeEventPoster from '../iframe-event-poster';
 
 import { EmbeddedContentEventMap, EmbeddedContentEventType } from './embedded-content-events';
 import IframeEmbeddedCheckoutMessenger from './iframe-embedded-checkout-messenger';
@@ -123,6 +122,22 @@ describe('EmbeddedCheckoutMessenger', () => {
             type: EmbeddedCheckoutEventType.FrameLoaded,
             payload: { contentId: 'foobar' },
         });
+    });
+
+    it('does not invoke message callback if it does not match with type of event', () => {
+        const handler = jest.fn();
+
+        messenger = new IframeEmbeddedCheckoutMessenger(
+            messageListener,
+            messagePoster,
+            untargetedMessagePoster,
+            { [EmbeddedCheckoutEventType.FrameLoaded]: handler }
+        );
+
+        messenger.postFrameError(new Error('Unexpected error'));
+
+        expect(handler)
+            .not.toHaveBeenCalled();
     });
 
     it('has methods that can be destructed', () => {

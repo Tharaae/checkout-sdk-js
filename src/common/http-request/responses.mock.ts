@@ -1,7 +1,7 @@
 import { Response } from '@bigcommerce/request-sender';
 
-import PaymentResponse from '../../payment/payment-response';
-import ErrorResponseBody from '../error/error-response-body';
+import { PaymentResponse } from '../../payment';
+import { ErrorResponseBody } from '../error';
 
 export function getResponse<T>(body: T, headers = {}, status = 200, statusText = 'OK'): Response<T> {
     return {
@@ -27,7 +27,7 @@ export function getPaymentResponse<T>(data: T, headers = {}, status = 200, statu
     };
 }
 
-export function getErrorResponse(body = getErrorResponseBody(), headers = {}, status = 400, statusText = 'Bad Request'): Response {
+export function getErrorResponse(body = getErrorResponseBody(), headers = {}, status = 400, statusText = 'Bad Request'): Response<any> {
     return {
         body,
         status,

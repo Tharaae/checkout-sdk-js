@@ -1,22 +1,16 @@
 import { includes } from 'lodash';
 
 import { Address } from '../../../address';
-import BillingAddress from '../../../billing/billing-address';
+import { BillingAddress } from '../../../billing';
 import { CheckoutStore, InternalCheckoutSelectors } from '../../../checkout';
-import {
-    InvalidArgumentError,
-    MissingDataError,
-    MissingDataErrorType,
-    NotInitializedError,
-    NotInitializedErrorType
-} from '../../../common/error/errors';
+import { InvalidArgumentError, MissingDataError, MissingDataErrorType, NotInitializedError, NotInitializedErrorType } from '../../../common/error/errors';
 import { OrderActionCreator, OrderRequestBody } from '../../../order';
 import { OrderFinalizationNotRequiredError } from '../../../order/errors';
 import { RemoteCheckoutActionCreator } from '../../../remote-checkout';
-import { PaymentMethodCancelledError } from '../../errors';
-import PaymentMethodInvalidError from '../../errors/payment-method-invalid-error';
+import { PaymentMethodCancelledError, PaymentMethodInvalidError } from '../../errors';
 import PaymentMethodActionCreator from '../../payment-method-action-creator';
 import { PaymentInitializeOptions, PaymentRequestOptions } from '../../payment-request-options';
+import { supportedCountries, supportedCountriesRequiringStates } from '../klarnav2';
 import PaymentStrategy from '../payment-strategy';
 
 import KlarnaCredit, { KlarnaAddress, KlarnaLoadResponse, KlarnaUpdateSessionParams } from './klarna-credit';
@@ -25,7 +19,6 @@ import KlarnaScriptLoader from './klarna-script-loader';
 export default class KlarnaPaymentStrategy implements PaymentStrategy {
     private _klarnaCredit?: KlarnaCredit;
     private _unsubscribe?: (() => void);
-    private _supportedEUCountries = ['AT', 'DE', 'DK', 'FI', 'GB', 'NL', 'NO', 'SE', 'CH'];
 
     constructor(
         private _store: CheckoutStore,
@@ -49,6 +42,11 @@ export default class KlarnaPaymentStrategy implements PaymentStrategy {
                         const checkout = state.checkout.getCheckout();
 
                         return checkout && checkout.outstandingBalance;
+                    },
+                    state => {
+                        const checkout = state.checkout.getCheckout();
+
+                        return checkout && checkout.coupons;
                     }
                 );
 
@@ -80,9 +78,7 @@ export default class KlarnaPaymentStrategy implements PaymentStrategy {
                 this._orderActionCreator.submitOrder({
                     ...payload,
                     payment: paymentPayload,
-                    // Note: API currently doesn't support using Store Credit with Klarna.
-                    // To prevent deducting customer's store credit, set it as false.
-                    useStoreCredit: false,
+                    useStoreCredit: payload.useStoreCredit,
                 }, options)
             ));
     }
@@ -122,7 +118,7 @@ export default class KlarnaPaymentStrategy implements PaymentStrategy {
     }
 
     private _getUpdateSessionData(billingAddress: BillingAddress, shippingAddress?: Address): KlarnaUpdateSessionParams {
-        if (!includes(this._supportedEUCountries, billingAddress.countryCode)) {
+        if (!includes([...supportedCountries, ...supportedCountriesRequiringStates], billingAddress.countryCode)) {
             return {};
         }
 
@@ -137,6 +133,10 @@ export default class KlarnaPaymentStrategy implements PaymentStrategy {
         return data;
     }
 
+    private _needsStateCode(countryCode: string) {
+        return includes(supportedCountriesRequiringStates, countryCode);
+    }
+
     private _mapToKlarnaAddress(address: Address, email?: string): KlarnaAddress {
         const klarnaAddress: KlarnaAddress = {
             street_address: address.address1,
@@ -145,7 +145,7 @@ export default class KlarnaPaymentStrategy implements PaymentStrategy {
             given_name: address.firstName,
             family_name: address.lastName,
             postal_code: address.postalCode,
-            region: address.stateOrProvince,
+            region: this._needsStateCode(address.countryCode) ? address.stateOrProvinceCode : address.stateOrProvince,
             email,
         };
 

@@ -5,6 +5,7 @@ import { InvalidArgumentError, MissingDataError, MissingDataErrorType, NotImplem
 import { bindDecorator as bind } from '../../../common/utility';
 import { GooglePayPaymentProcessor } from '../../../payment/strategies/googlepay';
 import { RemoteCheckoutActionCreator } from '../../../remote-checkout';
+import { getShippableItemsCount } from '../../../shipping';
 import { CustomerInitializeOptions, CustomerRequestOptions } from '../../customer-request-options';
 import CustomerStrategy from '../customer-strategy';
 
@@ -80,8 +81,24 @@ export default class GooglePayCustomerStrategy implements CustomerStrategy {
     }
 
     private _getGooglePayOptions(options: CustomerInitializeOptions): GooglePayCustomerInitializeOptions {
+        if (options.methodId === 'googlepayadyenv2' && options.googlepayadyenv2) {
+            return options.googlepayadyenv2;
+        }
+
+        if (options.methodId === 'googlepayauthorizenet' && options.googlepayauthorizenet) {
+            return options.googlepayauthorizenet;
+        }
+
         if (options.methodId === 'googlepaybraintree' && options.googlepaybraintree) {
             return options.googlepaybraintree;
+        }
+
+        if (options.methodId === 'googlepaycheckoutcom' && options.googlepaycheckoutcom) {
+            return options.googlepaycheckoutcom;
+        }
+
+        if (options.methodId === 'googlepaycybersourcev2' && options.googlepaycybersourcev2) {
+            return options.googlepaycybersourcev2;
         }
 
         if (options.methodId === 'googlepaystripe' && options.googlepaystripe) {
@@ -91,6 +108,26 @@ export default class GooglePayCustomerStrategy implements CustomerStrategy {
         throw new InvalidArgumentError();
     }
 
+    @bind
+    private async _handleWalletButtonClick(event: Event): Promise<void> {
+        event.preventDefault();
+        const cart = this._store.getState().cart.getCartOrThrow();
+        const hasPhysicalItems = getShippableItemsCount(cart) > 0;
+
+        try {
+            const paymentData = await this._googlePayPaymentProcessor.displayWallet();
+            await this._googlePayPaymentProcessor.handleSuccess(paymentData);
+            if (hasPhysicalItems && paymentData.shippingAddress) {
+                await this._googlePayPaymentProcessor.updateShippingAddress(paymentData.shippingAddress);
+            }
+            await this._onPaymentSelectComplete();
+        } catch (error) {
+            if (error && error.message !== 'CANCELED') {
+                throw error;
+            }
+        }
+    }
+
     private _onPaymentSelectComplete(): void {
         this._formPoster.postForm('/checkout.php', {
             headers: {
@@ -98,26 +135,5 @@ export default class GooglePayCustomerStrategy implements CustomerStrategy {
                 'Content-Type': 'application/x-www-form-urlencoded',
             },
         });
-    }
-
-    private _onError(error?: Error): void {
-        if (error && error.message !== 'CANCELED') {
-            throw error;
-        }
-    }
-
-    @bind
-    private _handleWalletButtonClick(event: Event): Promise<void> {
-        event.preventDefault();
-
-        return this._googlePayPaymentProcessor.displayWallet()
-            .then(paymentData => this._googlePayPaymentProcessor.handleSuccess(paymentData)
-            .then(() => {
-                if (paymentData.shippingAddress) {
-                    this._googlePayPaymentProcessor.updateShippingAddress(paymentData.shippingAddress);
-                }
-            }))
-            .then(() => this._onPaymentSelectComplete())
-            .catch(error => this._onError(error));
     }
 }

@@ -1,10 +1,120 @@
 import { Timeout } from '@bigcommerce/request-sender';
 import { createTimeout } from '@bigcommerce/request-sender';
 
+declare interface Address extends AddressRequestBody {
+    country: string;
+    shouldSaveAddress?: boolean;
+}
+
+declare interface AddressRequestBody {
+    firstName: string;
+    lastName: string;
+    company: string;
+    address1: string;
+    address2: string;
+    city: string;
+    stateOrProvince: string;
+    stateOrProvinceCode: string;
+    countryCode: string;
+    postalCode: string;
+    phone: string;
+    customFields: Array<{
+        fieldId: string;
+        fieldValue: string | number | string[];
+    }>;
+}
+
+/**
+ * The required config to render the AmazonPayV2 buttton.
+ */
+declare type AmazonPayV2ButtonInitializeOptions = AmazonPayV2ButtonParams;
+
+declare interface AmazonPayV2ButtonParams {
+    /**
+     * Amazon Pay merchant account identifier.
+     */
+    merchantId: string;
+    /**
+     * Configuration for calling the endpoint to Create Checkout Session.
+     */
+    createCheckoutSession: AmazonPayV2CheckoutSession;
+    /**
+     * Placement of the Amazon Pay button on your website.
+     */
+    placement: AmazonPayV2Placement;
+    /**
+     * Ledger currency provided during registration for the given merchant identifier.
+     */
+    ledgerCurrency: AmazonPayV2LedgerCurrency;
+    /**
+     * Product type selected for checkout. Default is 'PayAndShip'.
+     */
+    productType?: AmazonPayV2PayOptions;
+    /**
+     * Language used to render the button and text on Amazon Pay hosted pages.
+     */
+    checkoutLanguage?: AmazonPayV2CheckoutLanguage;
+    /**
+     * Sets button to Sandbox environment. Default is false.
+     */
+    sandbox?: boolean;
+}
+
+declare enum AmazonPayV2CheckoutLanguage {
+    en_US = "en_US",
+    en_GB = "en_GB",
+    de_DE = "de_DE",
+    fr_FR = "fr_FR",
+    it_IT = "it_IT",
+    es_ES = "es_ES",
+    ja_JP = "ja_JP"
+}
+
+declare interface AmazonPayV2CheckoutSession {
+    /**
+     * Endpoint URL to Create Checkout Session.
+     */
+    url: string;
+    /**
+     * HTTP request method. Default is 'POST'.
+     */
+    method?: 'GET' | 'POST';
+    /**
+     * Checkout Session ID parameter in the response. Default is 'checkoutSessionId'.
+     */
+    extractAmazonCheckoutSessionId?: string;
+}
+
+declare enum AmazonPayV2LedgerCurrency {
+    USD = "USD",
+    EUR = "EUR",
+    GBP = "GBP",
+    JPY = "JPY"
+}
+
+declare enum AmazonPayV2PayOptions {
+    /** Select this product type if you need the buyer's shipping details. */
+    PayAndShip = "PayAndShip",
+    /** Select this product type if you do not need the buyer's shipping details. */
+    PayOnly = "PayOnly"
+}
+
+declare enum AmazonPayV2Placement {
+    /** Initial or main page. */
+    Home = "Home",
+    /** Product details page. */
+    Product = "Product",
+    /** Cart review page before buyer starts checkout. */
+    Cart = "Cart",
+    /** Any page after buyer starts checkout. */
+    Checkout = "Checkout",
+    /** Any page that doesn't fit the previous descriptions. */
+    Other = "Other"
+}
+
 declare interface BraintreeError extends Error {
     type: 'CUSTOMER' | 'MERCHANT' | 'NETWORK' | 'INTERNAL' | 'UNKNOWN';
     code: string;
-    details: object;
     message: string;
 }
 
@@ -17,6 +127,11 @@ declare interface BraintreePaypalButtonInitializeOptions {
      * Whether or not to show a credit button.
      */
     allowCredit?: boolean;
+    /**
+     * Address to be used for shipping.
+     * If not provided, it will use the first saved address from the active customer.
+     */
+    shippingAddress?: Address | null;
     /**
      * A callback that gets called if unable to authorize and tokenize payment.
      *
@@ -50,6 +165,11 @@ declare class CheckoutButtonErrorSelector {
 
 declare interface CheckoutButtonInitializeOptions extends CheckoutButtonOptions {
     /**
+     * The options that are required to facilitate AmazonPayV2. They can be
+     * omitted unless you need to support AmazonPayV2.
+     */
+    amazonpay?: AmazonPayV2ButtonInitializeOptions;
+    /**
      * The options that are required to facilitate Braintree PayPal. They can be
      * omitted unless you need to support Braintree PayPal.
      */
@@ -65,19 +185,39 @@ declare interface CheckoutButtonInitializeOptions extends CheckoutButtonOptions 
      */
     paypal?: PaypalButtonInitializeOptions;
     /**
+     * The options that are required to facilitate PayPal Commerce. They can be omitted
+     * unless you need to support Paypal.
+     */
+    paypalCommerce?: PaypalCommerceButtonInitializeOptions;
+    /**
      * The ID of a container which the checkout button should be inserted.
      */
     containerId: string;
     /**
      * The options that are required to facilitate Braintree GooglePay. They can be
-     * omitted unles you need to support Braintree GooglePay.
+     * omitted unless you need to support Braintree GooglePay.
      */
     googlepaybraintree?: GooglePayButtonInitializeOptions;
     /**
+     * The options that are required to facilitate Checkout.com GooglePay. They can be
+     * omitted unless you need to support Checkout.com GooglePay.
+     */
+    googlepaycheckoutcom?: GooglePayButtonInitializeOptions;
+    /**
+     * The options that are required to facilitate CybersourceV2 GooglePay. They can be
+     * omitted unless you need to support CybersourceV2 GooglePay.
+     */
+    googlepaycybersourcev2?: GooglePayButtonInitializeOptions;
+    /**
      * The options that are required to facilitate Stripe GooglePay. They can be
-     * omitted unles you need to support Stripe GooglePay.
+     * omitted unless you need to support Stripe GooglePay.
      */
     googlepaystripe?: GooglePayButtonInitializeOptions;
+    /**
+     * The options that are required to facilitate Authorize.Net GooglePay.
+     * They can be omitted unless you need to support Authorize.Net GooglePay.
+     */
+    googlepayauthorizenet?: GooglePayButtonInitializeOptions;
 }
 
 declare class CheckoutButtonInitializer {
@@ -170,12 +310,18 @@ declare interface CheckoutButtonInitializerOptions {
 }
 
 declare enum CheckoutButtonMethodType {
+    AMAZON_PAY_V2 = "amazonpay",
     BRAINTREE_PAYPAL = "braintreepaypal",
     BRAINTREE_PAYPAL_CREDIT = "braintreepaypalcredit",
+    GOOGLEPAY_ADYENV2 = "googlepayadyenv2",
+    GOOGLEPAY_AUTHORIZENET = "googlepayauthorizenet",
     GOOGLEPAY_BRAINTREE = "googlepaybraintree",
+    GOOGLEPAY_CHECKOUTCOM = "googlepaycheckoutcom",
+    GOOGLEPAY_CYBERSOURCEV2 = "googlepaycybersourcev2",
     GOOGLEPAY_STRIPE = "googlepaystripe",
     MASTERPASS = "masterpass",
-    PAYPALEXPRESS = "paypalexpress"
+    PAYPALEXPRESS = "paypalexpress",
+    PAYPALCOMMERCE = "paypalcommerce"
 }
 
 /**
@@ -258,6 +404,26 @@ declare interface PaypalButtonStyleOptions {
     fundingicons?: boolean;
 }
 
+declare interface PaypalButtonStyleOptions_2 {
+    layout?: StyleButtonLayout;
+    color?: StyleButtonColor;
+    shape?: StyleButtonShape;
+    height?: 25 | 26 | 27 | 28 | 29 | 30 | 31 | 32 | 33 | 34 | 35 | 36 | 37 | 38 | 39 | 40 | 41 | 42 | 43 | 44 | 45 | 46 | 47 | 48 | 49 | 50 | 51 | 52 | 53 | 54 | 55;
+    label?: StyleButtonLabel;
+    tagline?: boolean;
+}
+
+declare interface PaypalCommerceButtonInitializeOptions {
+    /**
+     * A set of styling options for the checkout button.
+     */
+    style?: PaypalButtonStyleOptions_2;
+    /**
+     * Container id for messaging banner container
+     */
+    messagingContainer?: string;
+}
+
 /**
  * A set of options for configuring an asynchronous request.
  */
@@ -282,6 +448,32 @@ declare abstract class StandardError extends Error implements CustomError {
     name: string;
     type: string;
     constructor(message?: string);
+}
+
+declare enum StyleButtonColor {
+    gold = "gold",
+    blue = "blue",
+    silver = "silver",
+    black = "black",
+    white = "white"
+}
+
+declare enum StyleButtonLabel {
+    paypal = "paypal",
+    checkout = "checkout",
+    buynow = "buynow",
+    pay = "pay",
+    installment = "installment"
+}
+
+declare enum StyleButtonLayout {
+    vertical = "vertical",
+    horizontal = "horizontal"
+}
+
+declare enum StyleButtonShape {
+    pill = "pill",
+    rect = "rect"
 }
 
 /**

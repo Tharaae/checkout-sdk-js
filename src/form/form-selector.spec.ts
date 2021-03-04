@@ -7,7 +7,7 @@ import { getCountries } from '../geography/countries.mock';
 import { getShippingCountries } from '../shipping/shipping-countries.mock';
 
 import FormSelector, { createFormSelectorFactory, FormSelectorFactory } from './form-selector';
-import { getFormFields } from './form.mocks';
+import { getAddressFormFields, getFormFields } from './form.mock';
 
 // tslint:disable:no-non-null-assertion
 
@@ -25,12 +25,12 @@ describe('FormSelector', () => {
         let countries: Country[];
 
         beforeEach(() => {
-            formSelector = createFormSelector(state.config);
+            formSelector = createFormSelector(state.formFields);
             countries = getShippingCountries();
         });
 
         it('returns the shipping address form fields', () => {
-            const expected = getFormFields();
+            const expected = getAddressFormFields();
             const result = formSelector.getShippingAddressFields([], '');
 
             expect(map(result, 'id')).toEqual(map(expected, 'id'));
@@ -73,6 +73,16 @@ describe('FormSelector', () => {
             expect(province!.fieldType).not.toEqual('dropdown');
         });
 
+        it('make provinces required if requireState flag is on', () => {
+            const forms = formSelector.getShippingAddressFields(countries, 'AU');
+            const province = find(forms, { name: 'stateOrProvinceCode' });
+            expect(province!.required).toBe(true);
+            expect(province!.fieldType).toEqual('dropdown');
+            expect(province!.options!.items).toEqual([
+                { value: 'NSW', label: 'New South Wales' },
+            ]);
+        });
+
         it('makes postcode required for countries that require it', () => {
             const forms = formSelector.getShippingAddressFields(countries, 'AU');
             const postCode = find(forms, { name: 'postalCode' });
@@ -93,12 +103,12 @@ describe('FormSelector', () => {
         let countries: Country[];
 
         beforeEach(() => {
-            formSelector = createFormSelector(state.config);
+            formSelector = createFormSelector(state.formFields);
             countries = getCountries();
         });
 
         it('returns the billing address form fields', () => {
-            const expected = getFormFields();
+            const expected = getAddressFormFields();
             const result = formSelector.getBillingAddressFields([], '');
 
             expect(map(result, 'id')).toEqual(map(expected, 'id'));
@@ -135,6 +145,17 @@ describe('FormSelector', () => {
             ]);
         });
 
+        it('make provinces optional when requireState flag is off', () => {
+            const forms = formSelector.getShippingAddressFields(countries, 'US');
+            const province = find(forms, { name: 'stateOrProvinceCode' });
+            expect(province!.required).toBe(false);
+            expect(province!.fieldType).toEqual('dropdown');
+            expect(province!.options!.items).toEqual([
+                { value: 'CA', label: 'California' },
+                { value: 'TX', label: 'Texas' },
+            ]);
+        });
+
         it('does not make provinces required if we do not have them in the countries list', () => {
             const forms = formSelector.getBillingAddressFields(countries, 'JP');
             const province = find(forms, { name: 'stateOrProvince' });
@@ -155,6 +176,20 @@ describe('FormSelector', () => {
             const postCode = find(forms, { name: 'postalCode' });
 
             expect(postCode!.required).toBe(false);
+        });
+    });
+
+    describe('#getCustomerAccountFields()', () => {
+        let formSelector: FormSelector;
+
+        beforeEach(() => {
+            formSelector = createFormSelector(state.formFields);
+        });
+
+        it('returns the customer account fields', () => {
+            const { customerAccount } = getFormFields();
+
+            expect(formSelector.getCustomerAccountFields()).toEqual(customerAccount);
         });
     });
 });

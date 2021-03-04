@@ -2,6 +2,7 @@ import { CheckoutStore, InternalCheckoutSelectors } from '../../../checkout';
 import { OrderActionCreator, OrderPaymentRequestBody, OrderRequestBody } from '../../../order';
 import { OrderFinalizationNotRequiredError } from '../../../order/errors';
 import { PaymentArgumentInvalidError } from '../../errors';
+import { HostedInstrument, VaultedInstrument } from '../../payment';
 import PaymentActionCreator from '../../payment-action-creator';
 import { PaymentRequestOptions } from '../../payment-request-options';
 import * as paymentStatusTypes from '../../payment-status-types';
@@ -17,14 +18,26 @@ export default class OffsitePaymentStrategy implements PaymentStrategy {
     execute(payload: OrderRequestBody, options?: PaymentRequestOptions): Promise<InternalCheckoutSelectors> {
         const { payment, ...order } = payload;
         const orderPayload = this._shouldSubmitFullPayload(payment) ? payload : order;
+        const paymentData = payment && payment.paymentData;
+        const instrumentId = paymentData && (paymentData as VaultedInstrument).instrumentId || undefined;
+        const shouldSaveInstrument = paymentData && (paymentData as HostedInstrument).shouldSaveInstrument || undefined;
+        const shouldSetAsDefaultInstrument = paymentData && (paymentData as HostedInstrument).shouldSetAsDefaultInstrument || undefined;
 
         if (!payment) {
             throw new PaymentArgumentInvalidError(['payment']);
         }
 
+        const { methodId, gatewayId } = payment;
+
         return this._store.dispatch(this._orderActionCreator.submitOrder(orderPayload, options))
             .then(() =>
-                this._store.dispatch(this._paymentActionCreator.initializeOffsitePayment(payment.methodId, payment.gatewayId))
+            this._store.dispatch(this._paymentActionCreator.initializeOffsitePayment({
+                    methodId,
+                    gatewayId,
+                    instrumentId,
+                    shouldSaveInstrument,
+                    shouldSetAsDefaultInstrument,
+                }))
             );
     }
 
@@ -55,6 +68,6 @@ export default class OffsitePaymentStrategy implements PaymentStrategy {
             return false;
         }
 
-        return payment.gatewayId === 'adyen' || payment.methodId === 'ccavenuemars';
+        return payment.gatewayId === 'adyen' || payment.gatewayId === 'barclaycard' || payment.methodId === 'ccavenuemars';
     }
 }

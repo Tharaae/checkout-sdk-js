@@ -3,6 +3,7 @@ import { createRequestSender, RequestSender, Response } from '@bigcommerce/reque
 import { ContentType } from '../common/http-request';
 import { getErrorResponse, getResponse } from '../common/http-request/responses.mock';
 
+import Checkout from './checkout';
 import { CheckoutIncludes } from './checkout-params';
 import CheckoutRequestSender from './checkout-request-sender';
 import { getCheckout } from './checkouts.mock';
@@ -10,13 +11,14 @@ import { CheckoutNotAvailableError } from './errors';
 
 describe('CheckoutRequestSender', () => {
     let requestSender: RequestSender;
-    let response: Response;
+    let response: Response<Checkout>;
     let checkoutRequestSender: CheckoutRequestSender;
 
     const defaultIncludes = [
         'cart.lineItems.physicalItems.options',
         'cart.lineItems.digitalItems.options',
         'customer',
+        'customer.customerGroup',
         'payments',
         'promotions.banners',
     ].join(',');

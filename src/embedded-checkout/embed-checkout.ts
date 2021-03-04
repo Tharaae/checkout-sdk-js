@@ -1,15 +1,14 @@
 import { createRequestSender } from '@bigcommerce/request-sender';
 
+import { IframeEventListener, IframeEventPoster } from '../common/iframe';
+import { LoadingIndicator } from '../common/loading-indicator';
 import { BrowserStorage } from '../common/storage';
 import { parseUrl } from '../common/url';
 
 import EmbeddedCheckout from './embedded-checkout';
 import { EmbeddedCheckoutEventMap } from './embedded-checkout-events';
 import EmbeddedCheckoutOptions from './embedded-checkout-options';
-import { EmbeddedContentEvent } from './iframe-content/embedded-content-events';
-import IframeEventListener from './iframe-event-listener';
-import IframeEventPoster from './iframe-event-poster';
-import LoadingIndicator from './loading-indicator';
+import { EmbeddedContentEvent } from './iframe-content';
 import ResizableIframeCreator from './resizable-iframe-creator';
 
 const STORAGE_PREFIX = 'BigCommerce.EmbeddedCheckout';

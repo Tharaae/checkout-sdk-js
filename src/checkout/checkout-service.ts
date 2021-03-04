@@ -9,15 +9,17 @@ import { RequestOptions } from '../common/http-request';
 import { bindDecorator as bind } from '../common/utility';
 import { ConfigActionCreator } from '../config';
 import { CouponActionCreator, GiftCertificateActionCreator } from '../coupon';
-import { CustomerCredentials, CustomerInitializeOptions, CustomerRequestOptions, CustomerStrategyActionCreator, GuestCredentials } from '../customer';
+import { CustomerAccountRequestBody, CustomerActionCreator, CustomerAddressRequestBody, CustomerCredentials, CustomerInitializeOptions, CustomerRequestOptions, CustomerStrategyActionCreator, GuestCredentials } from '../customer';
+import { FormFieldsActionCreator } from '../form';
 import { CountryActionCreator } from '../geography';
 import { OrderActionCreator, OrderRequestBody } from '../order';
-import { SpamProtectionActionCreator, SpamProtectionOptions } from '../order/spam-protection';
 import { PaymentInitializeOptions, PaymentMethodActionCreator, PaymentRequestOptions, PaymentStrategyActionCreator } from '../payment';
 import { InstrumentActionCreator } from '../payment/instrument';
-import { ConsignmentsRequestBody, ConsignmentActionCreator, ShippingCountryActionCreator, ShippingInitializeOptions, ShippingRequestOptions, ShippingStrategyActionCreator } from '../shipping';
-import { ConsignmentAssignmentRequestBody, ConsignmentUpdateRequestBody } from '../shipping/consignment';
-import StoreCreditActionCreator from '../store-credit/store-credit-action-creator';
+import { ConsignmentsRequestBody, ConsignmentActionCreator, ConsignmentAssignmentRequestBody, ConsignmentUpdateRequestBody, ShippingCountryActionCreator, ShippingInitializeOptions, ShippingRequestOptions, ShippingStrategyActionCreator } from '../shipping';
+import { SignInEmailActionCreator, SignInEmailRequestBody } from '../signin-email';
+import { SpamProtectionActionCreator, SpamProtectionOptions } from '../spam-protection';
+import { StoreCreditActionCreator } from '../store-credit';
+import { Subscriptions, SubscriptionsActionCreator } from '../subscription';
 
 import { CheckoutRequestBody } from './checkout';
 import CheckoutActionCreator from './checkout-action-creator';
@@ -48,6 +50,7 @@ export default class CheckoutService {
         private _billingAddressActionCreator: BillingAddressActionCreator,
         private _checkoutActionCreator: CheckoutActionCreator,
         private _configActionCreator: ConfigActionCreator,
+        private _customerActionCreator: CustomerActionCreator,
         private _consignmentActionCreator: ConsignmentActionCreator,
         private _countryActionCreator: CountryActionCreator,
         private _couponActionCreator: CouponActionCreator,
@@ -60,8 +63,11 @@ export default class CheckoutService {
         private _paymentStrategyActionCreator: PaymentStrategyActionCreator,
         private _shippingCountryActionCreator: ShippingCountryActionCreator,
         private _shippingStrategyActionCreator: ShippingStrategyActionCreator,
+        private _signInEmailActionCreator: SignInEmailActionCreator,
         private _spamProtectionActionCreator: SpamProtectionActionCreator,
-        private _storeCreditActionCreator: StoreCreditActionCreator
+        private _storeCreditActionCreator: StoreCreditActionCreator,
+        private _subscriptionsActionCreator: SubscriptionsActionCreator,
+        private _formFieldsActionCreator: FormFieldsActionCreator
     ) {
         this._errorTransformer = createCheckoutServiceErrorTransformer();
         this._selectorsFactory = createCheckoutSelectorsFactory();
@@ -199,11 +205,13 @@ export default class CheckoutService {
      */
     loadOrder(orderId: number, options?: RequestOptions): Promise<CheckoutSelectors> {
         const loadCheckoutAction = this._orderActionCreator.loadOrder(orderId, options);
+        const formFieldsAction = this._formFieldsActionCreator.loadFormFields(options);
         const loadConfigAction = this._configActionCreator.loadConfig(options);
 
         return Promise.all([
             this._dispatch(loadCheckoutAction),
             this._dispatch(loadConfigAction, { queueId: 'config' }),
+            this._dispatch(formFieldsAction, { queueId: 'formFields' }),
         ])
             .then(() => this.getState());
     }
@@ -520,13 +528,107 @@ export default class CheckoutService {
     }
 
     /**
+     * Sends a email that contains a single-use sign-in link. When a valid links is clicked,
+     * signs in the customer without requiring any password, redirecting them to the account page if no redirectUrl is provided.
+     *
+     *
+     * ```js
+     * checkoutService.sendSignInEmail({ email: 'foo@bar.com', redirectUrl: 'checkout' });
+     * ```
+     *
+     * @param signInEmailRequest - The sign-in email request values.
+     * @param options - Options for the send email request.
+     * @returns A promise that resolves to the current state.
+     */
+    sendSignInEmail(signInEmailRequest: SignInEmailRequestBody, options?: RequestOptions): Promise<CheckoutSelectors> {
+        const action = this._signInEmailActionCreator.sendSignInEmail(signInEmailRequest, options);
+
+        return this._dispatch(action, { queueId: 'signInEmail' });
+    }
+
+    /**
+     * Creates a customer account.
+     *
+     * @remarks
+     * ```js
+     * checkoutService.createCustomerAccount({
+     *   email: 'foo@bar.com',
+     *   firstName: 'Foo',
+     *   lastName: 'Bar',
+     *   password: 'password',
+     *   acceptsMarketingEmails: true,
+     *   customFields: [],
+     * });
+     * ```
+     * Please note that `createCustomerAccount` is currently in an early stage
+     * of development. Therefore the API is unstable and not ready for public
+     * consumption.
+     *
+     * @alpha
+     * @param customerAccount - The customer account data.
+     * @param options - Options for creating customer account.
+     * @returns A promise that resolves to the current state.
+     */
+    createCustomerAccount(customerAccount: CustomerAccountRequestBody, options?: RequestOptions): Promise<CheckoutSelectors> {
+        const action = this._customerActionCreator.createCustomer(customerAccount, options);
+
+        return this._dispatch(action);
+    }
+
+    /**
+     * Creates a customer account address.
+     *
+     * @remarks
+     * ```js
+     * checkoutService.createCustomerAddress({
+     *   firstName: 'Foo',
+     *   lastName: 'Bar',
+     *   address1: '55 Market St',
+     *   stateOrProvinceCode: 'CA',
+     *   countryCode: 'US',
+     *   postalCode: '90110'
+     *   customFields: [],
+     * });
+     * ```
+     * Please note that `createCustomerAccountAddress` is currently in an early stage
+     * of development. Therefore the API is unstable and not ready for public
+     * consumption.
+     *
+     * @alpha
+     * @param customerAddress - The customer account data.
+     * @param options - Options for creating customer account.
+     * @returns A promise that resolves to the current state.
+     */
+    createCustomerAddress(customerAddress: CustomerAddressRequestBody, options?: RequestOptions): Promise<CheckoutSelectors> {
+        const action = this._customerActionCreator.createAddress(customerAddress, options);
+
+        return this._dispatch(action);
+    }
+
+    /**
+     * Updates the subscriptions associated to an email.
+     *
+     * @param subscriptions - The email and associated subscriptions to update.
+     * @param options - Options for continuing as a guest.
+     * @returns A promise that resolves to the current state.
+     */
+    updateSubscriptions(subscriptions: Subscriptions, options?: RequestOptions): Promise<CheckoutSelectors> {
+        const action = this._subscriptionsActionCreator.updateSubscriptions(subscriptions, options);
+
+        return this._dispatch(action, { queueId: 'subscriptions' });
+    }
+
+    /**
      * Continues to check out as a guest.
      *
-     * The customer is required to provide their email address in order to
-     * continue. Once they provide their email address, it will be stored as a
-     * part of their billing address.
+     * If your Checkout Settings allow it, your customers could continue the checkout as guests (without signing in).
+     * If you have enabled the checkout setting "Prompt existing accounts to sign in", this information is
+     * exposed as part of the [Customer](../interfaces/customer.md) object.
      *
-     * @param credentials - The guest credentials to use.
+     * Once they provide their email address, it will be stored as
+     * part of their [billing address](../interfaces/billingaddress.md).
+     *
+     * @param credentials - The guest credentials to use, with optional subscriptions.
      * @param options - Options for continuing as a guest.
      * @returns A promise that resolves to the current state.
      */
@@ -574,6 +676,19 @@ export default class CheckoutService {
      *
      * // The returned object should not contain information about the previously signed-in customer.
      * console.log(state.data.getCustomer());
+     * ```
+     *
+     * When a store has "Allow customers to access their cart across multiple devices" enabled, signing out
+     * will remove the cart/checkout data from the current session. An error with type="checkout_not_available" will be thrown.
+     *
+     * ```js
+     * try {
+     *   await service.signOutCustomer();
+     * } catch (error) {
+     *   if (error.type === 'checkout_not_available') {
+     *     window.top.location.assign('/');
+     *   }
+     * }
      * ```
      *
      * @param options - Options for signing out the customer.
@@ -704,7 +819,10 @@ export default class CheckoutService {
      * @param options - Options for updating the shipping address.
      * @returns A promise that resolves to the current state.
      */
-    updateShippingAddress(address: Partial<AddressRequestBody>, options?: ShippingRequestOptions): Promise<CheckoutSelectors> {
+    updateShippingAddress(
+        address: Partial<AddressRequestBody>,
+        options?: ShippingRequestOptions<CheckoutParams>
+    ): Promise<CheckoutSelectors> {
         const action = this._shippingStrategyActionCreator.updateAddress(address, options);
 
         return this._dispatch(action, { queueId: 'shippingStrategy' });
@@ -856,7 +974,7 @@ export default class CheckoutService {
      * Selects a shipping option for a given consignment.
      *
      * Note: this is used when items need to be shipped to multiple addresses,
-     * for single shipping address, use `CheckoutService#updateShippingAddres`.
+     * for single shipping address, use `CheckoutService#updateShippingAddress`.
      *
      * If a shipping option has an additional cost, the quote for the current
      * order will be adjusted once the option is selected.
@@ -1052,7 +1170,8 @@ export default class CheckoutService {
     deleteInstrument(instrumentId: string): Promise<CheckoutSelectors> {
         const action = this._instrumentActionCreator.deleteInstrument(instrumentId);
 
-        return this._dispatch(action);
+        return this._dispatch(action)
+            .then(() => this.loadInstruments());
     }
 
     /**
@@ -1076,21 +1195,51 @@ export default class CheckoutService {
     /**
      * Initializes the spam protection for order creation.
      *
+     * Note: Use `CheckoutService#executeSpamCheck` instead.
+     * You do not need to call this method before calling
+     * `CheckoutService#executeSpamCheck`.
+     *
      * With spam protection enabled, the customer has to be verified as
      * a human. The order creation will fail if spam protection
      * is enabled but verification fails.
      *
      * ```js
-     * await service.initializeSpamProtection({
-     *     containerId: 'spamProtectionContainer',
-     * });
+     * await service.initializeSpamProtection();
      * ```
      *
      * @param options - Options for initializing spam protection.
      * @returns A promise that resolves to the current state.
+     * @deprecated - Use CheckoutService#executeSpamCheck instead.
      */
     initializeSpamProtection(options: SpamProtectionOptions): Promise<CheckoutSelectors> {
         const action = this._spamProtectionActionCreator.initialize(options);
+
+        return this._dispatch(action, { queueId: 'spamProtection' });
+    }
+
+    /**
+     * Verifies whether the current checkout is created by a human.
+     *
+     * Note: this method will do the initialization, therefore you do not
+     * need to call `CheckoutService#initializeSpamProtection`
+     * before calling this method.
+     *
+     * With spam protection enabled, the customer has to be verified as
+     * a human. The order creation will fail if spam protection
+     * is enabled but verification fails. You should call this method before
+     * `submitOrder` method is called (i.e.: when the shopper
+     * first gets to the payment step).
+     *
+     * **Note**: You need to enable Google ReCAPTCHA bot protection in your Checkout Settings.
+     *
+     * ```js
+     * await service.executeSpamCheck();
+     * ```
+     *
+     * @returns A promise that resolves to the current state.
+     */
+    executeSpamCheck(): Promise<CheckoutSelectors> {
+        const action = this._spamProtectionActionCreator.verifyCheckoutSpamProtection();
 
         return this._dispatch(action, { queueId: 'spamProtection' });
     }

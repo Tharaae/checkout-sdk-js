@@ -1,5 +1,6 @@
 import { Response } from '@bigcommerce/request-sender';
 
+import { ErrorResponseBody } from '../common/error';
 import { getErrorResponse } from '../common/http-request/responses.mock';
 
 import { createCheckoutStoreErrorSelectorFactory, CheckoutStoreErrorSelectorFactory } from './checkout-store-error-selector';
@@ -9,7 +10,7 @@ import InternalCheckoutSelectors from './internal-checkout-selectors';
 
 describe('CheckoutStoreErrorSelector', () => {
     let createCheckoutStoreErrorSelector: CheckoutStoreErrorSelectorFactory;
-    let errorResponse: Response;
+    let errorResponse: Response<ErrorResponseBody>;
     let selectors: InternalCheckoutSelectors;
 
     beforeEach(() => {
@@ -56,6 +57,46 @@ describe('CheckoutStoreErrorSelector', () => {
 
             expect(errors.getLoadCheckoutError()).toEqual(undefined);
             expect(selectors.checkout.getLoadError).toHaveBeenCalled();
+        });
+    });
+
+    describe('#getCreateCustomerAccountError()', () => {
+        it('returns error if there is an error when loading checkout', () => {
+            jest.spyOn(selectors.customer, 'getCreateAccountError').mockReturnValue(errorResponse);
+
+            const errors = createCheckoutStoreErrorSelector(selectors);
+
+            expect(errors.getCreateCustomerAccountError()).toEqual(errorResponse);
+            expect(selectors.customer.getCreateAccountError).toHaveBeenCalled();
+        });
+
+        it('returns undefined if there is no error when loading checkout', () => {
+            jest.spyOn(selectors.customer, 'getCreateAccountError').mockReturnValue(undefined);
+
+            const errors = createCheckoutStoreErrorSelector(selectors);
+
+            expect(errors.getCreateCustomerAccountError()).toEqual(undefined);
+            expect(selectors.customer.getCreateAccountError).toHaveBeenCalled();
+        });
+    });
+
+    describe('#getSignInEmailError()', () => {
+        it('returns error if theres one', () => {
+            jest.spyOn(selectors.signInEmail, 'getSendError').mockReturnValue(errorResponse);
+
+            const errors = createCheckoutStoreErrorSelector(selectors);
+
+            expect(errors.getSignInEmailError()).toEqual(errorResponse);
+            expect(selectors.signInEmail.getSendError).toHaveBeenCalled();
+        });
+
+        it('returns undefined if there is no error', () => {
+            jest.spyOn(selectors.signInEmail, 'getSendError').mockReturnValue(undefined);
+
+            const errors = createCheckoutStoreErrorSelector(selectors);
+
+            expect(errors.getSignInEmailError()).toEqual(undefined);
+            expect(selectors.signInEmail.getSendError).toHaveBeenCalled();
         });
     });
 
@@ -376,6 +417,26 @@ describe('CheckoutStoreErrorSelector', () => {
 
             expect(errors.getUpdateBillingAddressError()).toEqual(undefined);
             expect(selectors.billingAddress.getUpdateError).toHaveBeenCalled();
+        });
+    });
+
+    describe('#getUpdateSubscriptionsError()', () => {
+        it('returns error if there is an error when updating subscriptions', () => {
+            jest.spyOn(selectors.subscriptions, 'getUpdateError').mockReturnValue(errorResponse);
+
+            const errors = createCheckoutStoreErrorSelector(selectors);
+
+            expect(errors.getUpdateSubscriptionsError()).toEqual(errorResponse);
+            expect(selectors.subscriptions.getUpdateError).toHaveBeenCalled();
+        });
+
+        it('returns undefined if there is NO error when updating subscriptions', () => {
+            jest.spyOn(selectors.subscriptions, 'getUpdateError').mockReturnValue(undefined);
+
+            const errors = createCheckoutStoreErrorSelector(selectors);
+
+            expect(errors.getUpdateSubscriptionsError()).toEqual(undefined);
+            expect(selectors.subscriptions.getUpdateError).toHaveBeenCalled();
         });
     });
 

@@ -1,15 +1,15 @@
 import { createAction, Action } from '@bigcommerce/data-store';
-import { merge, omit } from 'lodash';
+import { omit } from 'lodash';
 import { of, Observable } from 'rxjs';
 
 import { createCheckoutStore, CheckoutStore } from '../../../checkout';
 import { getCheckoutStoreState } from '../../../checkout/checkouts.mock';
-import { MissingDataError, StandardError } from '../../../common/error/errors';
+import { InvalidArgumentError, MissingDataError, StandardError } from '../../../common/error/errors';
 import { OrderActionCreator, OrderActionType, OrderRequestBody } from '../../../order';
 import { OrderFinalizationNotRequiredError } from '../../../order/errors';
 import { getOrderRequestBody } from '../../../order/internal-orders.mock';
+import { getShippingAddress } from '../../../shipping/shipping-addresses.mock';
 import { PaymentMethodCancelledError } from '../../errors';
-import { NonceInstrument } from '../../payment';
 import PaymentActionCreator from '../../payment-action-creator';
 import { PaymentActionType } from '../../payment-actions';
 import PaymentMethod from '../../payment-method';
@@ -21,6 +21,7 @@ import PaymentStrategy from '../payment-strategy';
 
 import BraintreePaymentProcessor from './braintree-payment-processor';
 import BraintreePaypalPaymentStrategy from './braintree-paypal-payment-strategy';
+import mapToBraintreeShippingAddressOverride from './map-to-braintree-shipping-address-override';
 
 describe('BraintreePaypalPaymentStrategy', () => {
     let orderActionCreator: OrderActionCreator;
@@ -38,8 +39,8 @@ describe('BraintreePaypalPaymentStrategy', () => {
         braintreePaymentProcessorMock = {} as BraintreePaymentProcessor;
         braintreePaymentProcessorMock.initialize = jest.fn();
         braintreePaymentProcessorMock.preloadPaypal = jest.fn(() => Promise.resolve());
-        braintreePaymentProcessorMock.paypal = jest.fn(() => Promise.resolve({ nonce: 'my_tokenized_card' }));
-        braintreePaymentProcessorMock.appendSessionId = jest.fn(tokenizedCard => tokenizedCard.then((card: NonceInstrument) => ({ ...card, deviceSessionId: 'my_session_id' })));
+        braintreePaymentProcessorMock.paypal = jest.fn(() => Promise.resolve({ nonce: 'my_tokenized_card', details: { email: 'random@email.com' } }));
+        braintreePaymentProcessorMock.getSessionId = jest.fn(() => 'my_session_id');
         braintreePaymentProcessorMock.deinitialize = jest.fn();
 
         paymentMethodMock = { ...getBraintreePaypal(), clientToken: 'myToken' };
@@ -79,7 +80,7 @@ describe('BraintreePaypalPaymentStrategy', () => {
 
             await braintreePaypalPaymentStrategy.initialize(options);
 
-            expect(braintreePaymentProcessorMock.initialize).toHaveBeenCalledWith('myToken', options.braintree);
+            expect(braintreePaymentProcessorMock.initialize).toHaveBeenCalledWith('foo', options.braintree);
         });
 
         it('preloads paypal', async () => {
@@ -88,31 +89,10 @@ describe('BraintreePaypalPaymentStrategy', () => {
             expect(braintreePaymentProcessorMock.preloadPaypal).toHaveBeenCalled();
         });
 
-        it('skips all initialization if a nonce is present in the paymentProvider', async () => {
-            store = createCheckoutStore(merge({}, getCheckoutStoreState(), {
-                paymentMethods: {
-                    data: [
-                        { ...paymentMethodMock, nonce: 'some-nonce' },
-                    ],
-                },
-            }));
-
-            braintreePaypalPaymentStrategy = new BraintreePaypalPaymentStrategy(
-                store,
-                orderActionCreator,
-                paymentActionCreator,
-                paymentMethodActionCreator,
-                braintreePaymentProcessorMock
-            );
-
-            await braintreePaypalPaymentStrategy.initialize({ methodId: paymentMethodMock.id });
-
-            expect(braintreePaymentProcessorMock.preloadPaypal).not.toHaveBeenCalled();
-            expect(braintreePaymentProcessorMock.initialize).not.toHaveBeenCalled();
-        });
-
         it('throws error if unable to initialize', async () => {
             paymentMethodMock.clientToken = undefined;
+            jest.spyOn(store.getState().paymentMethods, 'getPaymentMethodOrThrow')
+                .mockReturnValue(paymentMethodMock);
 
             try {
                 await braintreePaypalPaymentStrategy.initialize({ methodId: paymentMethodMock.id });
@@ -125,6 +105,8 @@ describe('BraintreePaypalPaymentStrategy', () => {
     describe('#execute()', () => {
         let orderRequestBody: OrderRequestBody;
         let options: PaymentInitializeOptions;
+
+        const shippingAddressOverride = mapToBraintreeShippingAddressOverride(getShippingAddress());
 
         beforeEach(() => {
             orderRequestBody = getOrderRequestBody();
@@ -139,6 +121,19 @@ describe('BraintreePaypalPaymentStrategy', () => {
             expect(store.dispatch).toHaveBeenCalledWith(submitOrderAction);
         });
 
+        it('refresh the state if paymentMethod has nonce value', async () => {
+            paymentMethodMock.nonce = 'some-nonce';
+            jest.spyOn(store.getState().paymentMethods, 'getPaymentMethodOrThrow')
+                .mockReturnValue(paymentMethodMock);
+
+            await braintreePaypalPaymentStrategy.initialize(options);
+            await braintreePaypalPaymentStrategy.execute(orderRequestBody, options);
+
+            expect(paymentMethodActionCreator.loadPaymentMethod).toHaveBeenCalledTimes(1);
+            expect(braintreePaymentProcessorMock.preloadPaypal).toHaveBeenCalledTimes(1);
+            expect(braintreePaymentProcessorMock.initialize).toHaveBeenCalledTimes(1);
+        });
+
         it('pass the options to submitOrder', async () => {
             await braintreePaypalPaymentStrategy.initialize(options);
             await braintreePaypalPaymentStrategy.execute(orderRequestBody, options);
@@ -150,16 +145,30 @@ describe('BraintreePaypalPaymentStrategy', () => {
             const expected = {
                 ...orderRequestBody.payment,
                 paymentData: {
-                    deviceSessionId: 'my_session_id',
-                    method: 'paypal',
-                    nonce: 'my_tokenized_card',
+                    formattedPayload: {
+                        vault_payment_instrument: null,
+                        set_as_default_stored_instrument: null,
+                        device_info: 'my_session_id',
+                        paypal_account: {
+                            token: 'my_tokenized_card',
+                            email: 'random@email.com',
+                        },
+                    },
                 },
             };
 
             await braintreePaypalPaymentStrategy.initialize(options);
             await braintreePaypalPaymentStrategy.execute(orderRequestBody, options);
 
-            expect(braintreePaymentProcessorMock.paypal).toHaveBeenCalledWith(190, 'en_US', 'USD', false);
+            expect(braintreePaymentProcessorMock.paypal).toHaveBeenCalledWith({
+                amount: 190,
+                locale: 'en_US',
+                currency: 'USD',
+                shouldSaveInstrument: false,
+                offerCredit: false,
+                shippingAddressOverride,
+            });
+
             expect(paymentActionCreator.submitPayment).toHaveBeenCalledWith(expected);
             expect(store.dispatch).toHaveBeenCalledWith(submitPaymentAction);
         });
@@ -175,21 +184,45 @@ describe('BraintreePaypalPaymentStrategy', () => {
             await braintreePaypalPaymentStrategy.execute({ ...orderRequestBody, useStoreCredit: true }, options);
 
             expect(checkout.getOutstandingBalance).toHaveBeenCalledWith(true);
-            expect(braintreePaymentProcessorMock.paypal).toHaveBeenCalledWith(150, 'en_US', 'USD', false);
+            expect(braintreePaymentProcessorMock.paypal).toHaveBeenCalledWith({
+                amount: 150,
+                locale: 'en_US',
+                currency: 'USD',
+                shouldSaveInstrument: false,
+                offerCredit: false,
+                shippingAddressOverride,
+            });
 
             await braintreePaypalPaymentStrategy.execute(orderRequestBody, options);
 
             expect(checkout.getOutstandingBalance).toHaveBeenCalledWith(false);
-            expect(braintreePaymentProcessorMock.paypal).toHaveBeenCalledWith(190, 'en_US', 'USD', false);
+            expect(braintreePaymentProcessorMock.paypal).toHaveBeenCalledWith({
+                amount: 190,
+                locale: 'en_US',
+                currency: 'USD',
+                shouldSaveInstrument: false,
+                offerCredit: false,
+                shippingAddressOverride,
+            });
         });
 
         it('does not call paypal if a nonce is present', async () => {
             paymentMethodMock.nonce = 'some-nonce';
 
+            jest.spyOn(store.getState().paymentMethods, 'getPaymentMethodOrThrow')
+                .mockReturnValue(paymentMethodMock);
+
             const expected = expect.objectContaining({
                 paymentData: {
-                    method: 'paypal',
-                    nonce: 'some-nonce',
+                    formattedPayload: {
+                        vault_payment_instrument: null,
+                        set_as_default_stored_instrument: null,
+                        device_info: null,
+                        paypal_account: {
+                            token: 'some-nonce',
+                            email: null,
+                        },
+                    },
                 },
             });
 
@@ -237,6 +270,52 @@ describe('BraintreePaypalPaymentStrategy', () => {
             }
         });
 
+        describe('when paying with a vaulted instrument', () => {
+            beforeEach(() => {
+                orderRequestBody = {
+                    payment: {
+                        methodId: 'braintreepaypal',
+                        paymentData: {
+                            instrumentId: 'fake-instrument-id',
+                        },
+                    },
+                };
+            });
+
+            it('calls submit payment with the right payload', async () => {
+                paymentMethodMock.config.isVaultingEnabled = true;
+
+                jest.spyOn(store.getState().paymentMethods, 'getPaymentMethodOrThrow')
+                    .mockReturnValue(paymentMethodMock);
+
+                await braintreePaypalPaymentStrategy.initialize({ methodId: paymentMethodMock.id });
+                await braintreePaypalPaymentStrategy.execute(orderRequestBody, options);
+
+                expect(braintreePaymentProcessorMock.paypal).not.toHaveBeenCalled();
+                expect(paymentActionCreator.submitPayment).toHaveBeenCalledWith({
+                    methodId: 'braintreepaypal',
+                    paymentData: {
+                        instrumentId: 'fake-instrument-id',
+                    },
+                });
+            });
+
+            it('throws if vaulting is disabled and trying to pay with a vaulted instrument', async () => {
+                await braintreePaypalPaymentStrategy.initialize({ methodId: paymentMethodMock.id });
+
+                try {
+                    await braintreePaypalPaymentStrategy.execute(orderRequestBody, options);
+                } catch (error) {
+                    expect(braintreePaymentProcessorMock.paypal).not.toHaveBeenCalled();
+                    expect(paymentActionCreator.submitPayment).not.toHaveBeenCalled();
+                    expect(orderActionCreator.submitOrder).not.toHaveBeenCalled();
+
+                    expect(error).toBeInstanceOf(InvalidArgumentError);
+                    expect(error.message).toEqual('Vaulting is disabled but a vaulted instrument was being used for this transaction');
+                }
+            });
+        });
+
         describe('if paypal credit', () => {
             beforeEach(() => {
                 braintreePaypalPaymentStrategy = new BraintreePaypalPaymentStrategy(
@@ -253,18 +332,156 @@ describe('BraintreePaypalPaymentStrategy', () => {
                 const expected = {
                     ...orderRequestBody.payment,
                     paymentData: {
-                        deviceSessionId: 'my_session_id',
-                        method: 'paypal',
-                        nonce: 'my_tokenized_card',
+                        formattedPayload: {
+                            vault_payment_instrument: null,
+                            set_as_default_stored_instrument: null,
+                            device_info: 'my_session_id',
+                            paypal_account: {
+                                token: 'my_tokenized_card',
+                                email: 'random@email.com',
+                            },
+                        },
                     },
                 };
 
                 await braintreePaypalPaymentStrategy.initialize(options);
                 await braintreePaypalPaymentStrategy.execute(orderRequestBody, options);
 
-                expect(braintreePaymentProcessorMock.paypal).toHaveBeenCalledWith(190, 'en_US', 'USD', true);
+                expect(braintreePaymentProcessorMock.paypal).toHaveBeenCalledWith({
+                    amount: 190,
+                    locale: 'en_US',
+                    currency: 'USD',
+                    shouldSaveInstrument: false,
+                    offerCredit: true,
+                    shippingAddressOverride,
+                });
                 expect(paymentActionCreator.submitPayment).toHaveBeenCalledWith(expected);
                 expect(store.dispatch).toHaveBeenCalledWith(submitPaymentAction);
+            });
+        });
+
+        describe('when vaulting is selected', () => {
+            beforeEach(() => {
+                orderRequestBody = {
+                    payment: {
+                        methodId: 'braintreepaypal',
+                        paymentData: {
+                            shouldSaveInstrument: true,
+                        },
+                    },
+                };
+
+                paymentMethodMock.config.isVaultingEnabled = true;
+                jest.spyOn(store.getState().paymentMethods, 'getPaymentMethodOrThrow')
+                    .mockReturnValue(paymentMethodMock);
+            });
+
+            it('initializes paypal in vault mode', async () => {
+                const expected = {
+                    ...orderRequestBody.payment,
+                    paymentData: {
+                        formattedPayload: {
+                            vault_payment_instrument: true,
+                            set_as_default_stored_instrument: null,
+                            device_info: 'my_session_id',
+                            paypal_account: {
+                                token: 'my_tokenized_card',
+                                email: 'random@email.com',
+                            },
+                        },
+                    },
+                };
+
+                await braintreePaypalPaymentStrategy.initialize(options);
+                await braintreePaypalPaymentStrategy.execute(orderRequestBody, options);
+
+                expect(braintreePaymentProcessorMock.paypal).toHaveBeenCalledWith(expect.objectContaining({
+                    shouldSaveInstrument: true,
+                }));
+
+                expect(paymentActionCreator.submitPayment).toHaveBeenCalledWith(expected);
+                expect(store.dispatch).toHaveBeenCalledWith(submitPaymentAction);
+            });
+
+            it('sends vault_payment_instrument set to true', async () => {
+                paymentMethodMock.config.isVaultingEnabled = true;
+
+                const expected = {
+                    ...orderRequestBody.payment,
+                    paymentData: {
+                        formattedPayload: expect.objectContaining({
+                            vault_payment_instrument: true,
+                        }),
+                    },
+                };
+
+                await braintreePaypalPaymentStrategy.initialize(options);
+                await braintreePaypalPaymentStrategy.execute(orderRequestBody, options);
+
+                expect(braintreePaymentProcessorMock.paypal).toHaveBeenCalledWith(expect.objectContaining({
+                    shouldSaveInstrument: true,
+                }));
+
+                expect(paymentActionCreator.submitPayment).toHaveBeenCalledWith(expected);
+                expect(store.dispatch).toHaveBeenCalledWith(submitPaymentAction);
+            });
+
+            it('sends set_as_default_stored_instrument set to null when vaulting and NOT making default', async () => {
+                await braintreePaypalPaymentStrategy.initialize(options);
+                await braintreePaypalPaymentStrategy.execute({
+                    payment: {
+                        methodId: 'braintreepaypal',
+                        paymentData: {
+                            shouldSaveInstrument: true,
+                        },
+                    },
+                }, options);
+
+                expect(paymentActionCreator.submitPayment).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        paymentData: {
+                            formattedPayload: expect.objectContaining({
+                                set_as_default_stored_instrument: null,
+                            }),
+                        },
+                    })
+                );
+            });
+
+            it('sends set_as_default_stored_instrument set to true when vaulting and making default', async () => {
+                await braintreePaypalPaymentStrategy.initialize(options);
+                await braintreePaypalPaymentStrategy.execute({
+                    payment: {
+                        methodId: 'braintreepaypal',
+                        paymentData: {
+                            shouldSaveInstrument: true,
+                            shouldSetAsDefaultInstrument: true,
+                        },
+                    },
+                }, options);
+
+                expect(paymentActionCreator.submitPayment).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        paymentData: {
+                            formattedPayload: expect.objectContaining({
+                                set_as_default_stored_instrument: true,
+                            }),
+                        },
+                    })
+                );
+            });
+
+            it('throws if vaulting is enabled and trying to save an instrument', async () => {
+                paymentMethodMock.config.isVaultingEnabled = false;
+                jest.spyOn(store.getState().paymentMethods, 'getPaymentMethodOrThrow')
+                    .mockReturnValue(paymentMethodMock);
+                await braintreePaypalPaymentStrategy.initialize(options);
+
+                try {
+                    await braintreePaypalPaymentStrategy.execute(orderRequestBody, options);
+                } catch (error) {
+                    expect(error).toBeInstanceOf(InvalidArgumentError);
+                }
             });
         });
     });
