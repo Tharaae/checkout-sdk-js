@@ -1,7 +1,7 @@
 import { omit } from 'lodash';
 
 import { ReadableCheckoutStore } from '../checkout';
-import { MissingDataError, MissingDataErrorType } from '../common/error/errors';
+// import { MissingDataError, MissingDataErrorType } from '../common/error/errors';
 import { OrderPaymentRequestBody } from '../order';
 import { isVaultedInstrument, HostedCreditCardInstrument, PaymentAdditionalAction } from '../payment';
 
@@ -25,14 +25,13 @@ export default class HostedFormOrderDataTransformer {
         const authToken = instrumentMeta && payment && isVaultedInstrument(payment) ?
             `${state.payment.getPaymentToken()}, ${instrumentMeta.vaultAccessToken}` :
             state.payment.getPaymentToken();
-
-        if (!authToken) {
-            throw new MissingDataError(MissingDataErrorType.MissingPaymentToken);
-        }
+        // if (!authToken) {
+        //     throw new MissingDataError(MissingDataErrorType.MissingPaymentToken);
+        // }
 
         return {
             additionalAction,
-            authToken,
+            authToken: authToken || '',
             checkout,
             config,
             order,
